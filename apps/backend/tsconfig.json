@@ -1,0 +1,12 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist"
+  },
+  "include": ["src"],
+  "scripts": {
+  "dev": "ts-node src/index.ts",
+  "build": "tsc"
+}
+
+}
