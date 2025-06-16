@@ -13,6 +13,8 @@ build/
 .env.local
 .env.*.local
 
+temp.txt
+
 # IDE settings
 .vscode/
 .idea/
