@@ -10,3 +10,11 @@ export type ChunkData={
   end:number,
   sha:string
 }
+
+
+export interface UploadPayload {
+  sha: string;
+  data: string; 
+}
+
+export type ChunkCallback = (chunk: Buffer) => void;
