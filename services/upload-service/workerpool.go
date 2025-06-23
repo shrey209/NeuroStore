@@ -7,13 +7,15 @@ import (
 )
 
 type Task struct {
-	Chunks []Chunk
+	Chunks [][]Chunk
 }
 
 func (t *Task) Process() {
-	//p
-
-	fmt.Printf("Processing task with %d chunks\n", len(t.Chunks))
+	total := 0
+	for _, slice := range t.Chunks {
+		total += len(slice)
+	}
+	fmt.Printf("Processing task with %d total chunks (%d batches)\n", total, len(t.Chunks))
 	time.Sleep(time.Second)
 }
 
