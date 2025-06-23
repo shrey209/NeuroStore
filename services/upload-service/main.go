@@ -15,6 +15,7 @@ import (
 )
 
 var globalQueue = NewConcurrentChunkDeque()
+var GlobalPool = NewWorkerPool(5)
 
 func saveChunksToFile(chunks []Chunk) error {
 	sort.Slice(chunks, func(i, j int) bool {
@@ -106,6 +107,7 @@ func handleWebSocketUpload(c *gin.Context) {
 }
 
 func main() {
+	InitRedis()
 	StartDispatcher(globalQueue)
 
 	r := gin.Default()
