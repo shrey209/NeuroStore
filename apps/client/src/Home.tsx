@@ -16,6 +16,7 @@ type WasmInstance = {
 const Home: React.FC = () => {
   const [blocks, setBlocks] = useState<ChunkData[]>([]);
   const wasmRef = useRef<WasmInstance | null>(null);
+  const fileRef = useRef<File | null>(null);
 
   useEffect(() => {
     const loadWasm = async () => {
@@ -24,23 +25,50 @@ const Home: React.FC = () => {
       const { instance } = await WebAssembly.instantiate(buffer, {});
       wasmRef.current = {
         instance,
-        memory: (instance.exports.memory as WebAssembly.Memory),
+        memory: instance.exports.memory as WebAssembly.Memory,
         malloc: instance.exports.malloc as (size: number) => number,
         free: instance.exports.free as (ptr: number) => void,
         process_chunk: instance.exports.process_chunk as (ptr: number, length: number, isLastChunk: number) => void,
         reset_chunking_state: instance.exports.reset_chunking_state as () => void,
         get_block_count: instance.exports.get_block_count as () => number,
         get_block: instance.exports.get_block as (index: number) => number,
-        get_blocks_json: instance.exports.get_blocks_json as () => number
+        get_blocks_json: instance.exports.get_blocks_json as () => number,
       };
     };
     loadWasm();
   }, []);
 
+  const uploadChunksViaWebSocket = async (chunks: ChunkData[], file: File) => {
+    const ws = new WebSocket("ws://localhost:3000/ws/upload");
+
+    ws.onopen = async () => {
+      for (const block of chunks) {
+        const { sha, start, end } = block;
+        const slice = file.slice(start, end + 1);
+        const buffer = await slice.arrayBuffer();
+        const base64 = btoa(String.fromCharCode(...new Uint8Array(buffer)));
+        const message = JSON.stringify({ sha, data: base64 });
+        ws.send(message);
+      }
+
+      // Signal the end of the stream
+      ws.send("__EOF__");
+    };
+
+    ws.onerror = (err) => {
+      console.error("❌ WebSocket error", err);
+    };
+
+    ws.onclose = () => {
+      console.log("✅ WebSocket connection closed");
+    };
+  };
+
   const handleFile = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !wasmRef.current) return;
 
+    fileRef.current = file;
     const wasm = wasmRef.current;
     wasm.reset_chunking_state();
 
@@ -61,7 +89,6 @@ const Home: React.FC = () => {
 
         const isLastChunk = currentChunk === totalChunks;
         wasm.process_chunk(ptr, value.length, isLastChunk ? 1 : 0);
-
         wasm.free(ptr);
       }
       done = readerDone;
@@ -74,45 +101,21 @@ const Home: React.FC = () => {
       json += String.fromCharCode(memory[i]);
     }
 
-    console.log('📦 Parsed JSON from WASM:', json);
-
     try {
       const parsed: ChunkData[] = JSON.parse(json);
       setBlocks(parsed);
 
-      const uploadPayload = [];
-
-      for (const block of parsed) {
-        const { sha, start, end } = block;
-        const slice = file.slice(start, end);
-        const buffer = await slice.arrayBuffer();
-        const base64 = btoa(String.fromCharCode(...new Uint8Array(buffer)));
-
-        uploadPayload.push({
-          sha,
-          data: base64,
-        });
-      }
-
-      const uploadRes = await fetch("http://localhost:3000/api/upload", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(uploadPayload.slice(0, 5) || {}),
-      });
-
-      if (uploadRes.ok) {
-        console.log("✅ Upload successful");
-      } else {
-        console.error("❌ Upload failed", await uploadRes.text());
+      if (fileRef.current) {
+        await uploadChunksViaWebSocket(parsed, fileRef.current);
       }
     } catch (err) {
-      console.error("❌ Failed to parse or upload JSON:", err);
+      console.error("❌ Failed to parse/upload:", err);
     }
   };
 
   return (
     <div className="p-4 font-mono">
-      <h1 className="text-2xl font-bold mb-4">📦 WASM Chunker</h1>
+      <h1 className="text-2xl font-bold mb-4">📦 WASM Chunker (WebSocket)</h1>
       <input type="file" onChange={handleFile} className="mb-4" />
 
       {blocks.length > 0 && (
