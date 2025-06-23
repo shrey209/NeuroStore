@@ -6,22 +6,55 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"sort"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 )
 
+func saveChunksToFile(chunks []Chunk) error {
+	// Sort by chunk number
+	sort.Slice(chunks, func(i, j int) bool {
+		return chunks[i].ChunkNo < chunks[j].ChunkNo
+	})
+
+	var fileData []byte
+	var outputFile string
+
+	for i, chunk := range chunks {
+		decoded, err := base64.StdEncoding.DecodeString(chunk.Data)
+		if err != nil {
+			return fmt.Errorf("failed to decode chunk %d: %v", chunk.ChunkNo, err)
+		}
+		fileData = append(fileData, decoded...)
+
+		if i == 0 {
+			outputFile = chunk.FileName
+			if outputFile == "" {
+				outputFile = "output.pdf"
+			}
+		}
+	}
+
+	// Save to current folder
+	return os.WriteFile(outputFile, fileData, 0644)
+}
+
+// New chunk struct with required fields
 type Chunk struct {
-	SHA  string `json:"sha"`
-	Data string `json:"data"` // base64-encoded
+	ChunkNo  int    `json:"chunk_no"`
+	SHA      string `json:"sha"`
+	UserID   string `json:"user_id"`
+	FileName string `json:"filename"`
+	Data     string `json:"data"` // base64-encoded
 }
 
 // WebSocket upgrader
 var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool {
-		// Allow all origins for dev; restrict in production
-		return true
+		return true // Allow all origins for dev
 	},
 }
 
@@ -35,6 +68,8 @@ func handleWebSocketUpload(c *gin.Context) {
 	defer conn.Close()
 
 	fmt.Println("🧬 WebSocket client connected")
+
+	var allChunks []Chunk
 
 	for {
 		_, msg, err := conn.ReadMessage()
@@ -54,16 +89,20 @@ func handleWebSocketUpload(c *gin.Context) {
 			continue
 		}
 
-		decoded, err := base64.StdEncoding.DecodeString(chunk.Data)
-		if err != nil {
-			fmt.Printf("❌ Failed to decode chunk %s: %v\n", chunk.SHA, err)
-			continue
-		}
-
-		fmt.Printf("🧱 Chunk %s — Size: %d bytes\n", chunk.SHA, len(decoded))
+		allChunks = append(allChunks, chunk)
 	}
 
-	fmt.Println("✅ All chunks received, closing connection")
+	// ✅ Reassemble and save the file
+	if len(allChunks) == 0 {
+		fmt.Println("⚠️ No chunks received")
+		return
+	}
+
+	if err := saveChunksToFile(allChunks); err != nil {
+		log.Println("❌ Failed to write file:", err)
+	} else {
+		log.Println("✅ File saved successfully")
+	}
 }
 
 func main() {
@@ -76,7 +115,7 @@ func main() {
 		AllowCredentials: true,
 	}))
 
-	r.GET("/ws/upload", handleWebSocketUpload) // WebSocket endpoint
+	r.GET("/ws/upload", handleWebSocketUpload)
 
 	fmt.Println("🚀 Server running on http://localhost:3000")
 	r.Run(":3000")

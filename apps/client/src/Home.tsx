@@ -38,80 +38,115 @@ const Home: React.FC = () => {
     loadWasm();
   }, []);
 
-  const uploadChunksViaWebSocket = async (chunks: ChunkData[], file: File) => {
-    const ws = new WebSocket("ws://localhost:3000/ws/upload");
+// const bufferToBase64 = (buffer: ArrayBuffer): Promise<string> => {
+//   return new Promise((resolve, reject) => {
+//     const blob = new Blob([buffer]);
+//     const reader = new FileReader();
+//     reader.onloadend = () => {
+//       const result = reader.result as string;
+//       const base64 = result.split(',')[1]; // Remove data:*/*;base64,
+//       resolve(base64);
+//     };
+//     reader.onerror = reject;
+//     reader.readAsDataURL(blob);
+//   });
+// };
+const uploadChunksViaWebSocket = async (chunks: ChunkData[], file: File) => {
+  const ws = new WebSocket("ws://localhost:3000/ws/upload");
+  const userId = "user123";
+  let totalSentBytes = 0;
 
-    ws.onopen = async () => {
-      for (const block of chunks) {
-        const { sha, start, end } = block;
-        const slice = file.slice(start, end + 1);
-        const buffer = await slice.arrayBuffer();
-        const base64 = btoa(String.fromCharCode(...new Uint8Array(buffer)));
-        const message = JSON.stringify({ sha, data: base64 });
-        ws.send(message);
-      }
+  await new Promise<void>((resolve, reject) => {
+    ws.onopen = () => resolve();
+    ws.onerror = reject;
+  });
 
-      // Signal the end of the stream
-      ws.send("__EOF__");
-    };
+  for (let i = 0; i < chunks.length; i++) {
+    const block = chunks[i];
+    const { sha, start, end } = block;
 
-    ws.onerror = (err) => {
-      console.error("❌ WebSocket error", err);
-    };
+    const slice = file.slice(start, end + 1); 
+    const buffer = await slice.arrayBuffer();
+    const view = new Uint8Array(buffer);
+    totalSentBytes += view.length;
 
+    
+    const base64 = btoa([...view].map(b => String.fromCharCode(b)).join(""));
+
+    const message = JSON.stringify({
+      chunk_no: i + 1,
+      sha,
+      user_id: userId,
+      filename: file.name,
+      data: base64
+    });
+
+    ws.send(message);
+  }
+
+  console.log(` Total bytes read and sent: ${totalSentBytes}`);
+  console.log(` Original file size: ${file.size}`);
+  if (totalSentBytes !== file.size) {
+    console.error(" MISMATCH in file size vs total bytes sent!");
+  }
+
+  ws.send("__EOF__");
+
+  await new Promise<void>((resolve) => {
     ws.onclose = () => {
       console.log("✅ WebSocket connection closed");
+      resolve();
     };
-  };
+  });
+};
 
-  const handleFile = async (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !wasmRef.current) return;
+const handleFile = async (e: ChangeEvent<HTMLInputElement>) => {
+  const file = e.target.files?.[0];
+  if (!file || !wasmRef.current) return;
 
-    fileRef.current = file;
-    const wasm = wasmRef.current;
-    wasm.reset_chunking_state();
+  fileRef.current = file;
+  const wasm = wasmRef.current;
+  wasm.reset_chunking_state();
 
-    const CHUNK_SIZE = 2000;
-    const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
-    let currentChunk = 0;
+  const CHUNK_SIZE = 4096;
 
-    const reader = file.stream().getReader();
-    let done = false;
+  const buffer = await file.arrayBuffer(); 
+  const data = new Uint8Array(buffer);
+  const totalChunks = Math.ceil(data.length / CHUNK_SIZE);
 
-    while (!done) {
-      const { value, done: readerDone } = await reader.read();
-      if (value) {
-        currentChunk++;
-        const ptr = wasm.malloc(value.length);
-        const mem = new Uint8Array(wasm.memory.buffer, ptr, value.length);
-        mem.set(value);
+  for (let i = 0; i < totalChunks; i++) {
+    const start = i * CHUNK_SIZE;
+    const end = Math.min(data.length, start + CHUNK_SIZE);
+    const chunk = data.slice(start, end);
 
-        const isLastChunk = currentChunk === totalChunks;
-        wasm.process_chunk(ptr, value.length, isLastChunk ? 1 : 0);
-        wasm.free(ptr);
-      }
-      done = readerDone;
+    const ptr = wasm.malloc(chunk.length);
+    const mem = new Uint8Array(wasm.memory.buffer, ptr, chunk.length);
+    mem.set(chunk);
+
+    const isLastChunk = i === totalChunks - 1;
+    wasm.process_chunk(ptr, chunk.length, isLastChunk ? 1 : 0);
+    wasm.free(ptr);
+  }
+
+  const jsonPtr = wasm.get_blocks_json();
+  const memory = new Uint8Array(wasm.memory.buffer);
+  let json = '';
+  for (let i = jsonPtr; memory[i] !== 0; i++) {
+    json += String.fromCharCode(memory[i]);
+  }
+
+  try {
+    const parsed: ChunkData[] = JSON.parse(json);
+    setBlocks(parsed);
+
+    if (fileRef.current) {
+      await uploadChunksViaWebSocket(parsed, fileRef.current);
     }
+  } catch (err) {
+    console.error(" Failed to parse/upload:", err);
+  }
+};
 
-    const jsonPtr = wasm.get_blocks_json();
-    const memory = new Uint8Array(wasm.memory.buffer);
-    let json = '';
-    for (let i = jsonPtr; memory[i] !== 0; i++) {
-      json += String.fromCharCode(memory[i]);
-    }
-
-    try {
-      const parsed: ChunkData[] = JSON.parse(json);
-      setBlocks(parsed);
-
-      if (fileRef.current) {
-        await uploadChunksViaWebSocket(parsed, fileRef.current);
-      }
-    } catch (err) {
-      console.error("❌ Failed to parse/upload:", err);
-    }
-  };
 
   return (
     <div className="p-4 font-mono">
