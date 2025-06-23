@@ -14,8 +14,9 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+var globalQueue = NewConcurrentChunkDeque()
+
 func saveChunksToFile(chunks []Chunk) error {
-	// Sort by chunk number
 	sort.Slice(chunks, func(i, j int) bool {
 		return chunks[i].ChunkNo < chunks[j].ChunkNo
 	})
@@ -38,27 +39,23 @@ func saveChunksToFile(chunks []Chunk) error {
 		}
 	}
 
-	// Save to current folder
 	return os.WriteFile(outputFile, fileData, 0644)
 }
 
-// New chunk struct with required fields
 type Chunk struct {
 	ChunkNo  int    `json:"chunk_no"`
 	SHA      string `json:"sha"`
 	UserID   string `json:"user_id"`
 	FileName string `json:"filename"`
-	Data     string `json:"data"` // base64-encoded
+	Data     string `json:"data"`
 }
 
-// WebSocket upgrader
 var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool {
-		return true // Allow all origins for dev
+		return true
 	},
 }
 
-// WebSocket handler for chunk uploads
 func handleWebSocketUpload(c *gin.Context) {
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
@@ -67,47 +64,51 @@ func handleWebSocketUpload(c *gin.Context) {
 	}
 	defer conn.Close()
 
-	fmt.Println("🧬 WebSocket client connected")
+	fmt.Println("WebSocket client connected")
 
 	var allChunks []Chunk
 
 	for {
 		_, msg, err := conn.ReadMessage()
 		if err != nil {
-			log.Println("❌ Error reading from WebSocket:", err)
+			log.Println("Error reading from WebSocket:", err)
 			break
 		}
 
 		if string(msg) == "__EOF__" {
-			fmt.Println("📦 Upload complete")
+			fmt.Println("Upload complete")
 			break
 		}
 
 		var chunk Chunk
 		if err := json.Unmarshal(msg, &chunk); err != nil {
-			log.Println("⚠️ Failed to unmarshal chunk:", err)
+			log.Println("Failed to unmarshal chunk:", err)
 			continue
 		}
 
 		allChunks = append(allChunks, chunk)
 	}
 
-	// ✅ Reassemble and save the file
 	if len(allChunks) == 0 {
-		fmt.Println("⚠️ No chunks received")
+		fmt.Println("No chunks received")
 		return
 	}
 
-	if err := saveChunksToFile(allChunks); err != nil {
-		log.Println("❌ Failed to write file:", err)
-	} else {
-		log.Println("✅ File saved successfully")
-	}
+	globalQueue.EnqueueBack(allChunks)
+	fmt.Printf("Enqueued %d chunks into queue\n", len(allChunks))
+
+	// Optional:
+	// if err := saveChunksToFile(allChunks); err != nil {
+	// 	log.Println("Failed to write file:", err)
+	// } else {
+	// 	log.Println("File saved successfully")
+	// }
 }
 
 func main() {
-	r := gin.Default()
+	StartDispatcher(globalQueue)
 
+	r := gin.Default()
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"http://localhost:5173"},
 		AllowMethods:     []string{"GET", "POST"},
@@ -117,6 +118,6 @@ func main() {
 
 	r.GET("/ws/upload", handleWebSocketUpload)
 
-	fmt.Println("🚀 Server running on http://localhost:3000")
+	fmt.Println("Server running on http://localhost:3000")
 	r.Run(":3000")
 }
