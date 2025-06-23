@@ -33,7 +33,7 @@ func CheckSHAExistence(rdb *redis.Client, shas []string) (existing []string, mis
 }
 
 func StoreSHAMetadata(rdb *redis.Client, metaMap map[string]ChunkMeta) error {
-	// Convert to a flat slice for MSet: [key1, val1, key2, val2, ...]
+
 	kvPairs := make([]interface{}, 0, len(metaMap)*2)
 
 	for sha, meta := range metaMap {

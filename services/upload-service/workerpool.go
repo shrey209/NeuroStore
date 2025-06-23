@@ -5,7 +5,8 @@ import (
 	"fmt"
 	"os"
 	"sync"
-	"time"
+
+	"github.com/google/uuid"
 )
 
 type Task struct {
@@ -14,7 +15,8 @@ type Task struct {
 
 func (t *Task) Process() {
 	totalChunks := 0
-	outputFile := fmt.Sprintf("output_%d.bin", time.Now().UnixNano())
+	uid := uuid.New()
+	outputFile := fmt.Sprintf("chunk_set_%s.bin", uid.String())
 
 	file, err := os.Create(outputFile)
 	if err != nil {
@@ -32,22 +34,28 @@ func (t *Task) Process() {
 				fmt.Printf("Failed to decode chunk (%d,%d): %v\n", i, j, err)
 				continue
 			}
-
-			start := currentOffset
 			n, err := file.Write(data)
 			if err != nil {
 				fmt.Printf("Failed to write chunk (%d,%d): %v\n", i, j, err)
 				continue
 			}
-			end := currentOffset + n - 1
+
 			currentOffset += n
 
-			fmt.Printf("Chunk (%d,%d) written: Start=%d, End=%d\n", i, j, start, end)
+			// fmt.Printf("Chunk (%d,%d) written: Start=%d, End=%d\n", i, j, start, end)
 			totalChunks++
 		}
 	}
 
 	fmt.Printf("Processing completed: %d total chunks written to %s\n", totalChunks, outputFile)
+
+	key := fmt.Sprintf("chunk_set_%d.bin")
+	err = UploadBinFileToS3(outputFile, key)
+	if err != nil {
+		fmt.Printf("Failed to upload to S3: %v\n", err)
+	} else {
+		fmt.Printf("File uploaded to S3 with key: %s\n", key)
+	}
 }
 
 type WorkerPool struct {
@@ -73,6 +81,7 @@ func (wp *WorkerPool) start() {
 
 func (wp *WorkerPool) worker() {
 	for task := range wp.taskChan {
+		fmt.Println("picking task")
 		task.Process()
 		wp.wg.Done()
 	}

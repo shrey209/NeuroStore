@@ -108,6 +108,8 @@ func handleWebSocketUpload(c *gin.Context) {
 
 func main() {
 	InitRedis()
+	InitS3()
+
 	StartDispatcher(globalQueue)
 
 	r := gin.Default()
