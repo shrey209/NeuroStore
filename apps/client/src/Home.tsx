@@ -100,6 +100,7 @@ const uploadChunksViaWebSocket = async (chunks: ChunkData[], file: File) => {
   });
 };
 
+
 const handleFile = async (e: ChangeEvent<HTMLInputElement>) => {
   const file = e.target.files?.[0];
   if (!file || !wasmRef.current) return;
@@ -147,6 +148,27 @@ const handleFile = async (e: ChangeEvent<HTMLInputElement>) => {
   }
 };
 
+const sendToBackend = async () => {
+  try {
+    const response = await fetch("http://localhost:3001/getfile", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(blocks)
+    });
+
+    if (!response.ok) {
+      throw new Error(`Server error: ${response.status}`);
+    }
+
+    const result = await response.json();
+    console.log("📤 Sent blocks to backend. Response:", result);
+  } catch (err) {
+    console.error("❌ Failed to send to backend:", err);
+  }
+};
+
 
   return (
     <div className="p-4 font-mono">
@@ -154,16 +176,24 @@ const handleFile = async (e: ChangeEvent<HTMLInputElement>) => {
       <input type="file" onChange={handleFile} className="mb-4" />
 
       {blocks.length > 0 && (
-        <div className="space-y-2">
-          {blocks.map((b, i) => (
-            <div key={i} className="p-2 border rounded bg-gray-100">
-              <strong>Chunk #{b.chunk_no}</strong><br />
-              <span>Offset: {b.start} - {b.end}</span><br />
-              <span>SHA256: <code className="break-all text-blue-700">{b.sha}</code></span>
-            </div>
-          ))}
-        </div>
-      )}
+  <div className="space-y-2">
+    <button
+      onClick={sendToBackend}
+      className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 mb-2"
+    >
+      🚀 Send JSON to Backend
+    </button>
+
+    {blocks.map((b, i) => (
+      <div key={i} className="p-2 border rounded bg-gray-100">
+        <strong>Chunk #{b.chunk_no}</strong><br />
+        <span>Offset: {b.start} - {b.end}</span><br />
+        <span>SHA256: <code className="break-all text-blue-700">{b.sha}</code></span>
+      </div>
+    ))}
+  </div>
+)}
+
     </div>
   );
 };
