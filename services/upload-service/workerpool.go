@@ -16,7 +16,8 @@ type Task struct {
 func (t *Task) Process() {
 	totalChunks := 0
 	uid := uuid.New()
-	outputFile := fmt.Sprintf("chunk_set_%s.bin", uid.String())
+	key := fmt.Sprintf("chunk_set_%s.bin", uid.String())
+	outputFile := key
 
 	file, err := os.Create(outputFile)
 	if err != nil {
@@ -26,6 +27,7 @@ func (t *Task) Process() {
 	defer file.Close()
 
 	currentOffset := 0
+	chunkMetaMap := make(map[string]ChunkMeta)
 
 	for i, chunkSlice := range t.Chunks {
 		for j, chunk := range chunkSlice {
@@ -34,27 +36,43 @@ func (t *Task) Process() {
 				fmt.Printf("Failed to decode chunk (%d,%d): %v\n", i, j, err)
 				continue
 			}
+
+			start := currentOffset
 			n, err := file.Write(data)
 			if err != nil {
 				fmt.Printf("Failed to write chunk (%d,%d): %v\n", i, j, err)
 				continue
 			}
-
+			end := currentOffset + n - 1
 			currentOffset += n
-
-			// fmt.Printf("Chunk (%d,%d) written: Start=%d, End=%d\n", i, j, start, end)
 			totalChunks++
+
+			chunkMetaMap[chunk.SHA] = ChunkMeta{
+				Filename: key,
+				Start:    start,
+				End:      end,
+			}
 		}
 	}
 
 	fmt.Printf("Processing completed: %d total chunks written to %s\n", totalChunks, outputFile)
 
-	key := fmt.Sprintf("chunk_set_%d.bin")
+	for sha, meta := range chunkMetaMap {
+		fmt.Printf("SHA: %s -> %+v\n", sha, meta)
+	}
+
 	err = UploadBinFileToS3(outputFile, key)
 	if err != nil {
 		fmt.Printf("Failed to upload to S3: %v\n", err)
 	} else {
 		fmt.Printf("File uploaded to S3 with key: %s\n", key)
+	}
+
+	err = StoreSHAMetadata(RedisClient, chunkMetaMap)
+	if err != nil {
+		fmt.Printf("Failed to store metadata in Redis: %v\n", err)
+	} else {
+		fmt.Printf("Chunk metadata stored in Redis for %d chunks\n", totalChunks)
 	}
 }
 
