@@ -95,15 +95,34 @@ func handleWebSocketUpload(c *gin.Context) {
 		return
 	}
 
-	globalQueue.EnqueueBack(allChunks)
-	fmt.Printf("Enqueued %d chunks into queue\n", len(allChunks))
+	// Collect SHA list and build SHA → Chunk map
+	var shaList []string
+	shaToChunk := make(map[string]Chunk)
 
-	// Optional:
-	// if err := saveChunksToFile(allChunks); err != nil {
-	// 	log.Println("Failed to write file:", err)
-	// } else {
-	// 	log.Println("File saved successfully")
-	// }
+	for _, chunk := range allChunks {
+		shaList = append(shaList, chunk.SHA)
+		shaToChunk[chunk.SHA] = chunk
+	}
+
+	_, nonExisting, err := CheckSHAExistence(RedisClient, shaList)
+	if err != nil {
+		log.Println("Error checking SHA existence:", err)
+		return
+	}
+
+	var newChunks []Chunk
+	for _, sha := range nonExisting {
+		newChunks = append(newChunks, shaToChunk[sha])
+	}
+
+	if len(newChunks) == 0 {
+		fmt.Println(" All chunks already existed. Nothing to enqueue.")
+		return
+	}
+
+	// Enqueue only new chunks
+	globalQueue.EnqueueBack(newChunks)
+	fmt.Printf(" Enqueued %d new chunks into queue\n", len(newChunks))
 }
 
 func main() {

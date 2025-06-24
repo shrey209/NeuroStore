@@ -79,26 +79,26 @@ func DownloadAndAssembleFiles(metaMap map[string][]int) {
 	outputFile := "output.pdf"
 	f, err := os.OpenFile(outputFile, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 	if err != nil {
-		fmt.Printf("❌ Failed to create output file: %v\n", err)
+		fmt.Printf(" Failed to create output file: %v\n", err)
 		return
 	}
 	defer f.Close()
 
 	for _, file := range files {
-		fmt.Printf("📥 Fetching %s [%d - %d] (chunk no: %d)\n", file.Name, file.Start, file.End, file.No)
+		fmt.Printf(" Fetching %s [%d - %d] (chunk no: %d)\n", file.Name, file.Start, file.End, file.No)
 
 		data, err := FetchByteRangeFromS3(file.Name, file.Start, file.End)
 		if err != nil {
-			fmt.Printf("❌ Failed to fetch data from S3 for %s: %v\n", file.Name, err)
+			fmt.Printf(" Failed to fetch data from S3 for %s: %v\n", file.Name, err)
 			continue
 		}
 
 		_, err = f.Write(data)
 		if err != nil {
-			fmt.Printf("❌ Failed to write data to output.pdf: %v\n", err)
+			fmt.Printf(" Failed to write data to output.pdf: %v\n", err)
 			continue
 		}
 	}
 
-	fmt.Println("✅ All chunks written to output.pdf")
+	fmt.Println(" All chunks written to output.pdf")
 }

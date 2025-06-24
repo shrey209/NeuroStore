@@ -25,7 +25,7 @@ func OrganizeAndSortChunks(metaMap map[string]ChunkMeta) map[string][]int {
 
 	for _, value := range metaMap {
 		if _, exists := fileChunks[value.Filename]; !exists {
-			// First time seeing this file
+
 			fileChunks[value.Filename] = []int{value.No, value.Start, value.End}
 		} else {
 			fileChunks[value.Filename][0] = min(value.No, fileChunks[value.Filename][0])
@@ -56,7 +56,7 @@ func getFileHandler(w http.ResponseWriter, r *http.Request) {
 	var chunks []ChunkData
 	if err := json.Unmarshal(body, &chunks); err != nil {
 		http.Error(w, "Invalid JSON format", http.StatusBadRequest)
-		fmt.Println("❌ Failed to parse JSON:", err)
+		fmt.Println(" Failed to parse JSON:", err)
 		return
 	}
 
