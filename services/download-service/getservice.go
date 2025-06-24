@@ -50,55 +50,49 @@ func FetchChunkMetadata(rdb *redis.Client, keys []string) (map[string]ChunkMeta,
 	return result, nil
 }
 
-func DownloadAndAssembleFiles(metaMap map[string][]int) {
-	type temp struct {
-		Name  string
-		No    int
-		Start int
-		End   int
-	}
+type Wrapper struct {
+	Meta ChunkMeta
+	Data []byte
+}
 
-	var files []temp
+func DownloadAndAssembleFiles(metaMap map[string][]ChunkMeta) {
+	var finalSlice []Wrapper
 
-	for filename, info := range metaMap {
-		if len(info) < 3 {
-			continue
+	// Fetch byte data for each merged chunk
+	for filename, chunks := range metaMap {
+		for _, chunk := range chunks {
+			data, err := FetchByteRangeFromS3(filename, chunk.Start, chunk.End)
+			if err != nil {
+				fmt.Printf("❌ Failed to fetch data from S3 for %s: %v\n", filename, err)
+				continue
+			}
+
+			finalSlice = append(finalSlice, Wrapper{
+				Meta: chunk,
+				Data: data,
+			})
 		}
-		files = append(files, temp{
-			Name:  filename,
-			No:    info[0],
-			Start: info[1],
-			End:   info[2],
-		})
 	}
 
-	sort.Slice(files, func(i, j int) bool {
-		return files[i].No < files[j].No
+	sort.Slice(finalSlice, func(i, j int) bool {
+		return finalSlice[i].Meta.No < finalSlice[j].Meta.No
 	})
 
 	outputFile := "output.pdf"
 	f, err := os.OpenFile(outputFile, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 	if err != nil {
-		fmt.Printf(" Failed to create output file: %v\n", err)
+		fmt.Printf("❌ Failed to create output file: %v\n", err)
 		return
 	}
 	defer f.Close()
 
-	for _, file := range files {
-		fmt.Printf(" Fetching %s [%d - %d] (chunk no: %d)\n", file.Name, file.Start, file.End, file.No)
-
-		data, err := FetchByteRangeFromS3(file.Name, file.Start, file.End)
+	// Write sorted chunks
+	for _, wrapper := range finalSlice {
+		_, err := f.Write(wrapper.Data)
 		if err != nil {
-			fmt.Printf(" Failed to fetch data from S3 for %s: %v\n", file.Name, err)
-			continue
-		}
-
-		_, err = f.Write(data)
-		if err != nil {
-			fmt.Printf(" Failed to write data to output.pdf: %v\n", err)
-			continue
+			fmt.Printf("❌ Failed to write chunk %d to output.pdf: %v\n", wrapper.Meta.No, err)
 		}
 	}
 
-	fmt.Println(" All chunks written to output.pdf")
+	fmt.Println("✅ All chunks successfully written to output.pdf")
 }
