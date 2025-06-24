@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
+	"sort"
 
 	"github.com/redis/go-redis/v9"
 )
@@ -14,6 +14,7 @@ type ChunkMeta struct {
 	Filename string `json:"filename"`
 	Start    int    `json:"start"`
 	End      int    `json:"end"`
+	No       int    `json:"no"`
 }
 
 var ctx = context.Background()
@@ -49,35 +50,55 @@ func FetchChunkMetadata(rdb *redis.Client, keys []string) (map[string]ChunkMeta,
 	return result, nil
 }
 
-func DownloadAndAssembleFiles(metaMap map[string][]ChunkMeta) {
-	for filename, chunks := range metaMap {
-		if len(chunks) == 0 {
-			continue
-		}
-
-		start := chunks[0].Start
-		end := chunks[len(chunks)-1].End
-
-		fmt.Printf("📂 Fetching file %s from byte range [%d - %d]\n", filename, start, end)
-
-		data, err := FetchByteRangeFromS3(filename, start, end)
-		if err != nil {
-			fmt.Printf("❌ Error fetching file %s: %v\n", filename, err)
-			continue
-		}
-
-		// Use original filename, ensure PDF extension
-		base := filepath.Base(filename)
-		if filepath.Ext(base) != ".pdf" {
-			base += ".pdf"
-		}
-		outPath := "output_" + base
-
-		if err := os.WriteFile(outPath, data, 0644); err != nil {
-			fmt.Printf("❌ Failed to write file %s: %v\n", outPath, err)
-			continue
-		}
-
-		fmt.Printf("✅ File written: %s (%d bytes)\n", outPath, len(data))
+func DownloadAndAssembleFiles(metaMap map[string][]int) {
+	type temp struct {
+		Name  string
+		No    int
+		Start int
+		End   int
 	}
+
+	var files []temp
+
+	for filename, info := range metaMap {
+		if len(info) < 3 {
+			continue
+		}
+		files = append(files, temp{
+			Name:  filename,
+			No:    info[0],
+			Start: info[1],
+			End:   info[2],
+		})
+	}
+
+	sort.Slice(files, func(i, j int) bool {
+		return files[i].No < files[j].No
+	})
+
+	outputFile := "output.pdf"
+	f, err := os.OpenFile(outputFile, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+	if err != nil {
+		fmt.Printf("❌ Failed to create output file: %v\n", err)
+		return
+	}
+	defer f.Close()
+
+	for _, file := range files {
+		fmt.Printf("📥 Fetching %s [%d - %d] (chunk no: %d)\n", file.Name, file.Start, file.End, file.No)
+
+		data, err := FetchByteRangeFromS3(file.Name, file.Start, file.End)
+		if err != nil {
+			fmt.Printf("❌ Failed to fetch data from S3 for %s: %v\n", file.Name, err)
+			continue
+		}
+
+		_, err = f.Write(data)
+		if err != nil {
+			fmt.Printf("❌ Failed to write data to output.pdf: %v\n", err)
+			continue
+		}
+	}
+
+	fmt.Println("✅ All chunks written to output.pdf")
 }

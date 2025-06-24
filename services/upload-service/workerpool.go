@@ -51,6 +51,7 @@ func (t *Task) Process() {
 				Filename: key,
 				Start:    start,
 				End:      end,
+				No:       chunk.ChunkNo,
 			}
 		}
 	}

@@ -11,6 +11,7 @@ type ChunkMeta struct {
 	Filename string `json:"filename"`
 	Start    int    `json:"start"`
 	End      int    `json:"end"`
+	No       int    `json:"no"`
 }
 
 var ctx = context.Background()

@@ -6,7 +6,6 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"sort"
 
 	"github.com/rs/cors"
 )
@@ -21,18 +20,18 @@ type ChunkData struct {
 	End      int    `json:"end"`
 }
 
-// Group and sort by filename + start offset
-func OrganizeAndSortChunks(metaMap map[string]ChunkMeta) map[string][]ChunkMeta {
-	fileChunks := make(map[string][]ChunkMeta)
+func OrganizeAndSortChunks(metaMap map[string]ChunkMeta) map[string][]int {
+	fileChunks := make(map[string][]int)
 
-	for _, meta := range metaMap {
-		fileChunks[meta.Filename] = append(fileChunks[meta.Filename], meta)
-	}
-
-	for filename := range fileChunks {
-		sort.Slice(fileChunks[filename], func(i, j int) bool {
-			return fileChunks[filename][i].Start < fileChunks[filename][j].Start
-		})
+	for _, value := range metaMap {
+		if _, exists := fileChunks[value.Filename]; !exists {
+			// First time seeing this file
+			fileChunks[value.Filename] = []int{value.No, value.Start, value.End}
+		} else {
+			fileChunks[value.Filename][0] = min(value.No, fileChunks[value.Filename][0])
+			fileChunks[value.Filename][1] = min(value.Start, fileChunks[value.Filename][1])
+			fileChunks[value.Filename][2] = max(value.End, fileChunks[value.Filename][2])
+		}
 	}
 
 	return fileChunks
@@ -72,7 +71,7 @@ func getFileHandler(w http.ResponseWriter, r *http.Request) {
 	metas, err := FetchChunkMetadata(RedisClient, shaKeys)
 	if err != nil {
 		http.Error(w, "Failed to fetch metadata", http.StatusInternalServerError)
-		fmt.Println("❌ Redis fetch error:", err)
+		fmt.Println(" Redis fetch error:", err)
 		return
 	}
 
@@ -81,13 +80,10 @@ func getFileHandler(w http.ResponseWriter, r *http.Request) {
 		fmt.Printf("SHA: %s => Filename: %s, Start: %d, End: %d\n", sha, meta.Filename, meta.Start, meta.End)
 	}
 
-	// Group and sort
 	grouped := OrganizeAndSortChunks(metas)
 
-	// Download and write files
 	DownloadAndAssembleFiles(grouped)
 
-	// Response
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(`{"status":"ok"}`))
