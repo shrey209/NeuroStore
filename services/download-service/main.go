@@ -64,6 +64,14 @@ func OrganizeAndSortChunks(metaMap map[string]ChunkMeta) map[string][]ChunkMeta 
 		fileChunks[key] = merge(value)
 	}
 
+	for key, value := range fileChunks {
+		fmt.Printf("for file -> %s  ranges are: ", key)
+		for _, itm := range value {
+			fmt.Printf("[%d,%d] ", itm.Start, itm.End)
+		}
+		fmt.Println()
+	}
+
 	return fileChunks
 }
 

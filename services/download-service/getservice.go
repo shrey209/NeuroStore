@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"sync"
 
 	"github.com/redis/go-redis/v9"
 )
@@ -53,25 +54,36 @@ func FetchChunkMetadata(rdb *redis.Client, keys []string) (map[string]ChunkMeta,
 type Wrapper struct {
 	Meta ChunkMeta
 	Data []byte
+	Err  error
 }
 
 func DownloadAndAssembleFiles(metaMap map[string][]ChunkMeta) {
-	var finalSlice []Wrapper
+	var wg sync.WaitGroup
+	ch := make(chan Wrapper, 100)
 
-	// Fetch byte data for each merged chunk
 	for filename, chunks := range metaMap {
 		for _, chunk := range chunks {
-			data, err := FetchByteRangeFromS3(filename, chunk.Start, chunk.End)
-			if err != nil {
-				fmt.Printf("❌ Failed to fetch data from S3 for %s: %v\n", filename, err)
-				continue
-			}
-
-			finalSlice = append(finalSlice, Wrapper{
-				Meta: chunk,
-				Data: data,
-			})
+			wg.Add(1)
+			go func(f string, c ChunkMeta) {
+				defer wg.Done()
+				data, err := FetchByteRangeFromS3(f, c.Start, c.End)
+				ch <- Wrapper{Meta: c, Data: data, Err: err}
+			}(filename, chunk)
 		}
+	}
+
+	go func() {
+		wg.Wait()
+		close(ch)
+	}()
+
+	var finalSlice []Wrapper
+	for wrapper := range ch {
+		if wrapper.Err != nil {
+			fmt.Printf(" Failed to fetch chunk %d: %v\n", wrapper.Meta.No, wrapper.Err)
+			continue
+		}
+		finalSlice = append(finalSlice, wrapper)
 	}
 
 	sort.Slice(finalSlice, func(i, j int) bool {
@@ -81,18 +93,17 @@ func DownloadAndAssembleFiles(metaMap map[string][]ChunkMeta) {
 	outputFile := "output.pdf"
 	f, err := os.OpenFile(outputFile, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 	if err != nil {
-		fmt.Printf("❌ Failed to create output file: %v\n", err)
+		fmt.Printf(" Failed to create output file: %v\n", err)
 		return
 	}
 	defer f.Close()
 
-	// Write sorted chunks
 	for _, wrapper := range finalSlice {
 		_, err := f.Write(wrapper.Data)
 		if err != nil {
-			fmt.Printf("❌ Failed to write chunk %d to output.pdf: %v\n", wrapper.Meta.No, err)
+			fmt.Printf(" Failed to write chunk %d: %v\n", wrapper.Meta.No, err)
 		}
 	}
 
-	fmt.Println("✅ All chunks successfully written to output.pdf")
+	fmt.Println(" All chunks successfully written to output.pdf")
 }
