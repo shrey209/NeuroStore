@@ -99,15 +99,12 @@ func handleWebSocketUpload(c *gin.Context) {
 	var shaList []string
 	shaToChunk := make(map[string]Chunk)
 
+	//can u adda log.fatal here if key already exist in the map
 	for _, chunk := range allChunks {
-		if _, exists := shaToChunk[chunk.SHA]; exists {
-			log.Fatalf("❌ Duplicate SHA detected: %s (chunk_no: %d)", chunk.SHA, chunk.ChunkNo)
-		}
 		shaList = append(shaList, chunk.SHA)
 		shaToChunk[chunk.SHA] = chunk
 	}
 
-	// Check in Redis for already existing chunks
 	_, nonExisting, err := CheckSHAExistence(RedisClient, shaList)
 	if err != nil {
 		log.Println("Error checking SHA existence:", err)
@@ -120,13 +117,12 @@ func handleWebSocketUpload(c *gin.Context) {
 	}
 
 	if len(newChunks) == 0 {
-		fmt.Println("✅ All chunks already existed. Nothing to enqueue.")
+		fmt.Println(" All chunks already existed. Nothing to enqueue.")
 		return
 	}
 
-	// Enqueue only new chunks
 	globalQueue.EnqueueBack(newChunks)
-	fmt.Printf("🚀 Enqueued %d new chunks into queue\n", len(newChunks))
+	fmt.Printf(" Enqueued %d new chunks into queue\n", len(newChunks))
 }
 
 func main() {
