@@ -4,7 +4,7 @@ import mongoose from "mongoose";
 
 const URI = process.env.MONGO_URI;
 
-console.log(URI);
+// console.log(URI);
 
 const connectionSetup = () => {
   if (!URI) {
