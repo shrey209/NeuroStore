@@ -1,21 +1,24 @@
-import mongoose from "mongoose";
+import mongoose, { Schema, Document } from "mongoose";
+import { ChunkData } from '@neurostore/shared/types';
 
-const metadataSchema = new mongoose.Schema({
-  metadata_id: { type: String, required: true, unique: true }, // UUID
-  blocks: [
-    {
-      block_index: Number,
-      offset: {
-        start: Number,
-        end: Number,
-      },
-      sha: String,
-      chunk_size: Number,
-      s3_object_key: String,
-      encryption: { type: Boolean, default: false },
-      compressed: { type: Boolean, default: false },
-    },
-  ],
+
+
+export interface MetadataDocument extends Document {
+  chunks: ChunkData[];
+}
+
+const chunkSchema = new Schema<ChunkData>(
+  {
+    chunk_no: { type: Number, required: true },
+    start: { type: Number, required: true },
+    end: { type: Number, required: true },
+    sha: { type: String, required: true },
+  },
+  { _id: false } 
+);
+
+const metadataSchema = new Schema<MetadataDocument>({
+  chunks: [chunkSchema],
 });
 
-export default mongoose.model("Metadata", metadataSchema);
+export default mongoose.model<MetadataDocument>("Metadata", metadataSchema);

@@ -1,28 +1,30 @@
-import Metadata from "../models/Metadata";
 import { Request, Response } from "express";
+import MetadataModel from "../models/Metadata";
 
-export const postMetadata = async (req: Request, res: Response) => {
+// POST /metadata
+export const createMetadata = async (req: Request, res: Response) => {
   try {
-    const file_id = req.params.file_id;
-    const user_id = req.params.user_id;
-    const metadataList = req.body; // assume array
-    await Metadata.insertMany(
-      metadataList.map((meta) => ({ ...meta, file_id }))
-    );
-    res.status(201).json({ message: "Metadata saved" });
-  } catch (err) {
-    res.status(500).json({ error: "Metadata save failed" });
+    const { chunks } = req.body;
+
+    const metadata = new MetadataModel({ chunks });
+    const savedMetadata = await metadata.save();
+
+    res.status(201).json(savedMetadata);
+  } catch (error) {
+    console.error("Error creating metadata:", error);
+    res.status(500).json({ message: "Internal Server Error" });
   }
 };
 
+// GET /metadata/:id
 export const getMetadataById = async (req: Request, res: Response) => {
   try {
-    const metadata = await Metadata.findOne({
-      metadata_id: req.params.metadata_id,
-      file_id: req.params.file_id,
-    });
-    res.json(metadata);
-  } catch (err) {
-    res.status(500).json({ error: "Metadata fetch failed" });
+    const { id } = req.params;
+    const metadata = await MetadataModel.findById(id);
+    res.status(200).json(metadata);
+    
+  } catch (error) {
+    console.error("Error fetching metadata:", error);
+    res.status(500).json({ message: "Internal Server Error" });
   }
 };

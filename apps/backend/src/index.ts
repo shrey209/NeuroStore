@@ -22,7 +22,7 @@ app.use("/app/v1/auth", routerAuth);
 app.use("/app/v1/users", routerUser);
 app.use("/app/v1/files/:user_id", routerFile);
 app.use("/app/v1/chunks/:user_id/:file_id/:metadata_id/", routerChunk);
-app.use("/app/v1/metadata/:user_id/:file_id", routerMetadata);
+app.use("/app/v1/metadata", routerMetadata);
 app.use("/app/v1/utils", routerUtils);
 
 const start = async () => {
