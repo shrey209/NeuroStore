@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { loginWithGitHub } from "../../auth/githubAuth";
+import { loginWithGitHub } from "../auth/githubAuth";
 import type { CookieOptions } from "express";
 
 export async function githubCallbackController(req: Request, res: Response): Promise<void> {
@@ -7,21 +7,21 @@ export async function githubCallbackController(req: Request, res: Response): Pro
 
   if (!code) {
     res.status(400).json({ error: "Missing code in query" });
-    return; // 🧠 this return prevents execution of code below
+    return;
   }
 
   try {
-    const { token, fakeUserId } = await loginWithGitHub(code);
+    const { token, user_id } = await loginWithGitHub(code);
 
     const cookieOptions: CookieOptions = {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
-      maxAge: 24 * 60 * 60 * 1000,
+      maxAge: 24 * 60 * 60 * 1000, // 1 day
     };
 
     res.cookie("token", token, cookieOptions);
-    console.log("✅ Login success for:", fakeUserId);
+    console.log("✅ Login success for:", user_id);
 
     res.redirect("http://localhost:5173/");
   } catch (err: any) {

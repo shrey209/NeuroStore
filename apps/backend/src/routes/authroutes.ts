@@ -1,6 +1,6 @@
 // src/routes/authRoutes.ts
 import express from "express";
-import { githubCallbackController } from "../src/controller/authController";
+import { githubCallbackController } from "../controller/authController";
 
 const routerAuth = express.Router();
 

@@ -1,7 +1,7 @@
-
-// src/auth/githubAuth.ts
 import axios from "axios";
 import { createJWT } from "../auth/jwtutils";
+import User from "../models/users";
+import { User as SharedUser } from "@neurostore/shared/types";
 
 const CLIENT_ID = process.env.CLIENT_ID!;
 const CLIENT_SECRET = process.env.CLIENT_SECRET!;
@@ -16,9 +16,10 @@ interface GitHubUser {
   id: number;
   login: string;
   email: string | null;
+  avatar_url: string;
 }
 
-export async function loginWithGitHub(code: string): Promise<{ token: string; fakeUserId: string }> {
+export async function loginWithGitHub(code: string): Promise<{ token: string; user_id: string }> {
   const tokenRes = await axios.post<GitHubAccessTokenResponse>(
     "https://github.com/login/oauth/access_token",
     {
@@ -46,21 +47,33 @@ export async function loginWithGitHub(code: string): Promise<{ token: string; fa
   });
 
   const githubUser = userRes.data;
+
   if (!githubUser || !githubUser.id) {
     throw new Error("Failed to fetch GitHub user");
   }
 
-  console.log("🔍 GitHub User Info:");
-  console.log({
-    id: githubUser.id,
-    login: githubUser.login,
-    email: githubUser.email,
-  });
+  const githubIdStr = githubUser.id.toString();
 
-  const fakeUserId = `test-${Math.floor(Math.random() * 10000)}`;
-  console.log("🧪 Using Fake User ID:", fakeUserId);
+  // Step 1: Check if user exists by GitHub ID
+  let user = await User.findOne({ github_id: githubIdStr });
 
-  const jwt = createJWT({ id: fakeUserId });
+  if (!user) {
+    // Step 2: If user doesn't exist, create one
+    const newUser = new User({
+      user_id: `github:${githubIdStr}`,
+      user_name: githubUser.login,
+      provider: "github",
+      gmail: githubUser.email || undefined,
+      profile_picture: githubUser.avatar_url,
+      email_verified: !!githubUser.email,
+      github_id: githubIdStr,
+    });
 
-  return { token: jwt, fakeUserId };
+    user = await newUser.save();
+  }
+
+  
+  const jwt = createJWT({ id: user.user_id });
+
+  return { token: jwt, user_id: user.user_id };
 }

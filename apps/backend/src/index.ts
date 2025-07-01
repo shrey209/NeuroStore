@@ -1,10 +1,11 @@
 // server.ts or index.ts
 
 require("dotenv").config();
+
 import cors from "cors";
 import express from "express";
-import connectionSetup from "../db/connection"; // ✅ fixed relative path
-import routerAuth from "../routes/authRoutes";   // ✅ match actual file name
+import connectionSetup from "./db/connection"; 
+import routerAuth from "./routes/authroutes";
 
 // These are left as-is for later
 // import routerChunk from "./routes/chunks";
@@ -14,7 +15,10 @@ import routerAuth from "../routes/authRoutes";   // ✅ match actual file name
 // import routerUtils from "./routes/utils";
 
 const app = express();
+
 const PORT = Number(process.env.PORT) || 4000;
+
+
 
 app.use(express.json());
 
@@ -41,7 +45,7 @@ app.use("/auth", routerAuth);
 
 const start = async () => {
   try {
-    // await connectionSetup();
+     await connectionSetup();
     app.listen(PORT, () => console.log(`🚀 Server started on port ${PORT}`));
   } catch (error: any) {
     console.error("❌ Failed to start server:", error);
