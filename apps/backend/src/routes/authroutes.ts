@@ -1,18 +1,26 @@
-// src/routes/authRoutes.ts
 import express from "express";
-import { githubCallbackController } from "../controller/authController";
+import { githubCallbackController, googleCallbackController } from "../controller/authController";
 
 const routerAuth = express.Router();
 
-const CLIENT_ID = process.env.CLIENT_ID!;
+const GITHUB_CLIENT_ID = process.env.CLIENT_ID!;
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID!;
+const GOOGLE_REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI!;
 
-// 🚀 Step 1: GitHub login initiator
+// 🚀 GitHub OAuth entry point
 routerAuth.get("/github/login", (_req, res) => {
-  const redirectUrl = `https://github.com/login/oauth/authorize?client_id=${CLIENT_ID}&redirect_uri=http://localhost:4000/auth/github/callback&scope=user`;
+  const redirectUrl = `https://github.com/login/oauth/authorize?client_id=${GITHUB_CLIENT_ID}&redirect_uri=http://localhost:4000/auth/github/callback&scope=user`;
   res.redirect(redirectUrl);
 });
 
-// 🎯 Step 2: GitHub OAuth callback
+// ✅ Google OAuth entry point
+routerAuth.get("/google/login", (_req, res) => {
+  const redirectUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${GOOGLE_CLIENT_ID}&redirect_uri=${GOOGLE_REDIRECT_URI}&response_type=code&scope=openid%20email%20profile`;
+  res.redirect(redirectUrl);
+});
+
+// 🔁 Callbacks
 routerAuth.get("/github/callback", githubCallbackController);
+routerAuth.get("/google/callback", googleCallbackController);
 
 export default routerAuth;
