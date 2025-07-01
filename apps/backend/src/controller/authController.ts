@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { loginWithGitHub } from "../auth/githubAuth";
+import { loginWithGitHub } from "../../auth/githubAuth";
 import type { CookieOptions } from "express";
 
 export async function githubCallbackController(req: Request, res: Response): Promise<void> {
