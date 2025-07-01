@@ -1,12 +1,10 @@
+// src/routes/metadataRoutes.ts
 import express from "express";
-import { createMetadata, getMetadataById } from "../controller/metadataController";
+import { createMetadata, getMetadataById } from "../controllers/metadataController";
 
-const routerMetadata = express.Router();
+const router = express.Router();
 
-// POST /app/v1/metadata
-routerMetadata.post("/", createMetadata);
+router.post("/metadata", createMetadata);
+router.get("/metadata/:id", getMetadataById);
 
-// GET /app/v1/metadata/:id
-routerMetadata.get("/:id", getMetadataById);
-
-export default routerMetadata;
+export default router;
