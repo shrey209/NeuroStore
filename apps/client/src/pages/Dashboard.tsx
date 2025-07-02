@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Sidebar from '../components/Layout/Sidebar';
+
 import SearchBar from '../components/Search/SearchBar';
 import FileList from '../components/Files/FileList';
 import AccessManagementModal from '../components/Modals/AccessManagementModal';
@@ -147,7 +147,7 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="flex h-screen bg-gray-50">
-      <Sidebar />
+     
       
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}

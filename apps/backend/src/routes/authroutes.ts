@@ -1,5 +1,5 @@
 import express from "express";
-import { githubCallbackController, googleCallbackController } from "../controller/authController";
+import { githubCallbackController, googleCallbackController ,logoutController,checkSessionController} from "../controller/authController";
 
 const routerAuth = express.Router();
 
@@ -21,6 +21,9 @@ routerAuth.get("/google/login", (_req, res) => {
 
 // 🔁 Callbacks
 routerAuth.get("/github/callback", githubCallbackController);
+routerAuth.get("/session", checkSessionController);
 routerAuth.get("/google/callback", googleCallbackController);
+routerAuth.post("/logout", logoutController);
+
 
 export default routerAuth;

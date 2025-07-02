@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import { loginWithGitHub } from "../auth/githubAuth";
 import type { CookieOptions } from "express";
 import { loginWithGoogle } from "../auth/googleAuth";
-
+import { verifyJWT } from "../auth/jwtutils"; 
 export async function githubCallbackController(req: Request, res: Response): Promise<void> {
   const code = req.query.code as string;
 
@@ -56,4 +56,30 @@ export async function googleCallbackController(req: Request, res: Response) {
     console.error("Google login error:", err);
     res.status(500).json({ error: "Google login failed" });
   }
+}
+
+
+
+export async function checkSessionController(req: Request, res: Response) {
+  const token = req.cookies?.token;
+
+  if (!token) {
+     res.status(200).json({ isLoggedIn: false });
+     return;
+  }
+
+  const [isValid] = verifyJWT(token);
+
+  res.status(200).json({ isLoggedIn: isValid });
+}
+
+
+export function logoutController(req: Request, res: Response) {
+  res.clearCookie("token", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+  });
+
+  res.status(200).json({ message: "Logged out successfully" });
 }
