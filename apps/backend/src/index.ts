@@ -7,7 +7,7 @@ import routerAuth from "./routes/authroutes";
 import { verifyAuthMiddleware } from "./middlewares/jwtMiddleware";
 import cookieParser from "cookie-parser";
 import userRouter from "./routes/users";
-
+import filerouter from "./routes/filesroutes"
 // These are left as-is for later
 // import routerChunk from "./routes/chunks";
 // import routerFile from "./routes/files";
@@ -25,7 +25,8 @@ app.use(
     credentials: true, 
   })
 );
-app.use(express.json());
+app.use(express.json({ limit: "50mb" })); 
+app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 app.use(cookieParser()); 
 
 app.get("/", (_req, res) => {
@@ -37,7 +38,7 @@ app.use("/auth", routerAuth);
 
 // These are commented out for now, as requested
  app.use("/api/users",userRouter);
-// app.use("/app/v1/files/:user_id", routerFile);
+app.use("/api/file/", filerouter);
 // app.use("/app/v1/chunks/:user_id/:file_id/:metadata_id/", routerChunk);
 // app.use("/app/v1/metadata", routerMetadata);
 // app.use("/app/v1/utils", routerUtils);

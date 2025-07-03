@@ -22,7 +22,6 @@ export interface UploadPayload {
 export type AuthProvider = "google" | "github";
 
 export interface User {
-  user_id: string;
   user_name: string;
   provider: AuthProvider;
   gmail?: string;
@@ -70,4 +69,13 @@ export interface SharedFile {
   shared_with: SharedAccessEntry[];
   metadata: FileMetadataEntry[];
   uploaded_at: string; // ISO string
+}
+
+
+export interface FileDataDTO {
+  file_name: string;
+  file_extension: string;
+  mime_type: string;
+  file_size: number;
+  chunks: ChunkData[];
 }

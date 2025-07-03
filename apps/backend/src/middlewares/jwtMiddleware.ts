@@ -1,24 +1,34 @@
-// src/middleware/verifyAuth.ts
 import { Request, Response, NextFunction } from "express";
-import { verifyJWT } from "../auth/jwtutils"; 
+import { verifyJWT } from "../auth/jwtutils";
 
+// Use res.locals to attach the user ID without TypeScript issues
 export function verifyAuthMiddleware(req: Request, res: Response, next: NextFunction) {
   const token = req.cookies?.token;
 
   if (!token) {
-     res.status(401).json({ message: "Unauthorized: No token" });
-     return;
+    res.status(401).json({ message: "Unauthorized: No token" });
+    return;
   }
 
-  const [valid, userId] = verifyJWT(token);
+  const [valid, decoded] = verifyJWT(token);
 
-  if (!valid || !userId) {
-     res.status(401).json({ message: "Unauthorized: Invalid token" });
-     return;
+  if (!valid || !decoded?.id) {
+    res.status(401).json({ message: "Unauthorized: Invalid token" });
+    return;
   }
 
-  
-  (req as any).user_id = userId;
+  res.locals.user_id = decoded.id; // ✅ Clean and safe
+  next();
+}
+
+export function optionalAuthMiddleware(req: Request, res: Response, next: NextFunction) {
+  const token = req.cookies?.token;
+  if (!token) return next();
+
+  const [valid, decoded] = verifyJWT(token);
+  if (valid && decoded?.id) {
+    res.locals.user_id = decoded.id;
+  }
 
   next();
 }

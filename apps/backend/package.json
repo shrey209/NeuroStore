@@ -18,7 +18,9 @@
     "mongoose": "^8.16.1",
     "passport": "^0.7.0",
     "passport-github2": "^0.1.12",
-    "pdf-parse": "^1.1.1"
+    "pdf-parse": "^1.1.1",
+    "uuid": "^11.1.0",
+    "zod": "^3.25.71"
   },
   "devDependencies": {
     "@types/axios": "^0.14.4",

@@ -1,6 +1,6 @@
 // src/routes/metadataRoutes.ts
 import express from "express";
-import { createMetadata, getMetadataById } from "../controllers/metadataController";
+import { createMetadata, getMetadataById } from "../controller/metadataController";
 
 const router = express.Router();
 

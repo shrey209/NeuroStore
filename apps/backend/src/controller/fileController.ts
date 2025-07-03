@@ -1,16 +1,18 @@
 import { Request, Response } from "express";
 import File from "../models/files";
-import { SharedFile } from "@neurostore/shared/types";
+import { SharedFile, FileDataDTO } from "@neurostore/shared/types";
 import { Types } from "mongoose";
 import User from "../models/users";
+import Metadata from "../models/metadata";
+import { v4 as uuidv4 } from 'uuid';
 
 // GET /api/files/by-ids
 export const getFilesByIds = async (req: Request, res: Response) => {
-  const idsParam = req.params.ids; // e.g. "file1,file2,file3"
+  const idsParam = req.params.ids;
 
   if (!idsParam) {
-   res.status(400).json({ message: "Missing file ids in params" });
-   return;
+    res.status(400).json({ message: "Missing file ids in params" });
+    return;
   }
 
   const ids = idsParam.split(",");
@@ -25,106 +27,202 @@ export const getFilesByIds = async (req: Request, res: Response) => {
 };
 
 // GET /api/files/:file_id/metadata/latest
-export const getLatestMetadataId = async (req: Request, res: Response) => {
+export const getLatestMetadata = async (req: Request, res: Response) => {
   const { file_id } = req.params;
-  const user_id = (req as any).user_id; // may be undefined for public users
+  const user_id = (req as any).user_id;
 
   try {
     const file = await File.findOne({ file_id });
 
     if (!file || !file.metadata.length) {
-       res.status(404).json({ message: "File or metadata not found" });
-       return
+      res.status(404).json({ message: "File or metadata not found" });
+      return;
     }
+
+    const latest = file.metadata.reduce((a, b) => (b.version > a.version ? b : a));
 
     // 1. Owner check
     if (user_id && file.user.toString() === user_id) {
-      const latest = file.metadata.reduce((a, b) => (b.version > a.version ? b : a));
-       res.json({ metadata_id: latest._id });
+      const metadataDoc = await Metadata.findById(latest._id);
+       res.json(metadataDoc);
        return;
     }
 
     // 2. Public check
     if (file.is_public) {
-      const latest = file.metadata.reduce((a, b) => (b.version > a.version ? b : a));
-       res.json({ metadata_id: latest._id });
+      const metadataDoc = await Metadata.findById(latest._id);
+       res.json(metadataDoc);
        return;
     }
 
-    // 3. If no user ID, access denied (not public and not logged in)
+    // 3. Not public and not logged in
     if (!user_id) {
        res.status(401).json({ message: "Unauthorized" });
        return;
     }
 
-    // 4. Get user details (github/gmail)
-    const user = await User.findOne({ user_id });
-
+    // 4. Get user by _id
+    const user = await User.findById(user_id);
     if (!user) {
        res.status(403).json({ message: "User not found" });
        return;
     }
 
-    // 5. Check shared access
-    const hasAccess = file.shared_with.some((entry) => {
-      return (
-        (entry.user_id && entry.user_id === user.user_id) ||
-        (entry.github_id && entry.github_id === user.github_id) ||
-        (entry.gmail && entry.gmail === user.gmail)
-      );
-    });
+    // 5. Shared access check
+    const hasAccess = file.shared_with.some((entry) =>
+      (entry.github_id && entry.github_id === user.github_id) ||
+      (entry.gmail && entry.gmail === user.gmail)
+    );
 
-    if (!hasAccess) {
-       res.status(403).json({ message: "Access denied" });
-       return;
+    if (hasAccess) {
+      const metadataDoc = await Metadata.findById(latest._id);
+      res.json(metadataDoc);
+      return;
     }
 
-    const latest = file.metadata.reduce((a, b) => (b.version > a.version ? b : a));
-     res.json({ metadata_id: latest._id });
-      return;
+    res.status(403).json({ message: "Access denied" });
+    return;
   } catch (err) {
-    console.error("Error getting latest metadata:", err);
-     res.status(500).json({ message: "Internal server error" });
-     return;
+    console.error("Error fetching metadata:", err);
+    res.status(500).json({ message: "Internal server error" });
   }
 };
-// POST /api/files
-export const createFile = async (req: Request, res: Response) => {
-  const {
-    file_id,
-    file_name,
-    file_extension,
-    file_size,
-    mime_type,
-    metadata,
-    is_public,
-    shared_with,
-  } = req.body;
 
-  const user_id = (req as any).user_id;
+//get chundata by filename 
+export const getLatestMetadataByFilename = async (req: Request, res: Response) => {
+  const { filename } = req.params;
+const user_id = res.locals.user_id;
 
-  if (!file_id || !file_name || !metadata?.length || !user_id) {
-     res.status(400).json({ message: "Missing required fields" });
+  if (!user_id) {
+     res.status(401).json({ message: "Unauthorized: No user ID" });
      return;
   }
 
   try {
-    const fileDoc = new File({
-      file_id,
-      user: user_id,
-      file_name,
-      file_extension,
-      file_size,
-      mime_type,
-      metadata,
-      is_public: !!is_public,
-      shared_with: shared_with || [],
-    });
+    // Find the file by filename and user ID (owner)
+    let file = await File.findOne({ file_name: filename, user: user_id });
+
+    if (!file) {
+      // If not owner, try finding by just filename
+      file = await File.findOne({ file_name: filename });
+
+      if (!file || !file.metadata.length) {
+         res.status(404).json({ message: "File or metadata not found" });
+         return;
+      }
+
+      // Check if user has shared access with write permission
+      const user = await User.findById(user_id);
+      if (!user) {
+         res.status(403).json({ message: "User not found" });
+         return;
+      }
+
+      const hasWriteAccess = file.shared_with.some(entry =>
+        (entry.access_level  === "write") &&
+        (
+          (entry.github_id && entry.github_id === user.github_id) ||
+          (entry.gmail && entry.gmail === user.gmail)
+        )
+      );
+
+      if (!hasWriteAccess) {
+         res.status(403).json({ message: "Access denied" });
+         return
+      }
+    }
+
+    // Get the latest metadata
+    const latest = file.metadata.reduce((a, b) => (b.version > a.version ? b : a));
+    const metadataDoc = await Metadata.findById(latest._id);
+
+    if (!metadataDoc) {
+       res.status(404).json({ message: "Metadata not found" });
+       return;
+    }
+
+    res.json(metadataDoc);
+  } catch (err) {
+    console.error("Error fetching metadata by filename:", err);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+// POST /api/files
+export const uploadFile = async (req: Request, res: Response) => {
+ const user_id = res.locals.user_id;
+  if (!user_id) {
+    res.status(401).json({ message: "Unauthorized" });
+    return;
+  }
+
+  let dto: FileDataDTO;
+  try {
+    dto = req.body;
+  } catch (err) {
+    res.status(400).json({ message: "Invalid body format" });
+    return;
+  }
+
+  const { file_name, file_extension, mime_type, file_size, chunks } = dto;
+
+  if (!file_name || !chunks?.length) {
+    res.status(400).json({ message: "Missing file_name or chunks" });
+    return;
+  }
+
+  try {
+    const metadataDoc = await Metadata.create({ chunks });
+
+    let fileDoc = await File.findOne({ user: user_id, file_name });
+
+    let newVersion = 1;
+    if (fileDoc && fileDoc.metadata.length > 0) {
+      const versions = fileDoc.metadata.map((m) => m.version);
+      versions.sort((a, b) => b - a);
+      newVersion = versions[0] + 1;
+    }
+
+    const metadataEntry = {
+      _id: metadataDoc._id,
+      version: newVersion,
+    };
+
+    let isNewFile = false;
+
+    if (!fileDoc) {
+      fileDoc = new File({
+        file_id: uuidv4(),
+        user: user_id,
+        file_name,
+        file_extension,
+        file_size,
+        mime_type,
+        is_public: false,
+        shared_with: [],
+        metadata: [metadataEntry],
+        uploaded_at: new Date(),
+      });
+      isNewFile = true;
+    } else {
+      fileDoc.metadata.push(metadataEntry);
+      fileDoc.file_size = file_size;
+      fileDoc.mime_type = mime_type;
+      fileDoc.file_extension = file_extension;
+    }
 
     const savedFile = await fileDoc.save();
-    res.status(201).json(savedFile);
+
+    if (isNewFile) {
+      await User.updateOne(
+        { _id: user_id },
+        { $push: { file_details: savedFile._id } }
+      );
+    }
+
+    res.status(200).json({ message: "Upload complete", file: savedFile });
   } catch (err) {
-    console.error("Error creating file:", err);
+    console.error("Error in uploadFile:", err);
     res.status(500).json({ message: "Internal server error" });
   }
 };
@@ -156,8 +254,8 @@ export const isPublic = async (req: Request, res: Response) => {
     const file = await File.findOne({ file_id });
 
     if (!file) {
-       res.status(404).json({ message: "File not found" });
-       return;
+      res.status(404).json({ message: "File not found" });
+      return;
     }
 
     res.json({ is_public: file.is_public });

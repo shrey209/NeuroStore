@@ -2,20 +2,22 @@
 import express from "express";
 import {
   getFilesByIds,
-  getLatestMetadataId,
-  createFile,
+  getLatestMetadata,
+  uploadFile,
   getSharedWith,
   isPublic,
+  getLatestMetadataByFilename,
 } from "../controller/fileController";
 
-import { verifyAuthMiddleware } from "../middlewares/jwtMiddleware";
+import { verifyAuthMiddleware,optionalAuthMiddleware } from "../middlewares/jwtMiddleware";
 
-const router = express.Router();
+const filerouter = express.Router();
 
-router.get("/get/:ids", verifyAuthMiddleware, getFilesByIds);
-router.get("/:file_id/metadata/latest", verifyAuthMiddleware, getLatestMetadataId);
-router.post("/", verifyAuthMiddleware, createFile);
-router.get("/:file_id/shared-with", verifyAuthMiddleware, getSharedWith);
-router.get("/:file_id/is-public", isPublic); 
+filerouter.get("/get/:ids", verifyAuthMiddleware, getFilesByIds);
+filerouter.get("/:file_id/metadata/latest", optionalAuthMiddleware, getLatestMetadata);
+filerouter.post("/upload", verifyAuthMiddleware, uploadFile);
+filerouter.get("/:file_id/shared-with", verifyAuthMiddleware, getSharedWith);
+filerouter.get("/:file_id/is-public", isPublic); 
+filerouter.get("/filename/:filename/metadata/latest", verifyAuthMiddleware,getLatestMetadataByFilename);
 
-export default router;
+export default filerouter;
