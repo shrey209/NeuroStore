@@ -3,6 +3,7 @@ import User from "../models/users";
 import { User as SharedUser } from "@neurostore/shared/types";
 import { IUserModel } from "../models/users";
 
+import "../models/files";
 
 const toSharedUser = (doc: IUserModel): SharedUser => ({
   user_id: doc.user_id,
@@ -17,7 +18,7 @@ const toSharedUser = (doc: IUserModel): SharedUser => ({
   github_id: doc.github_id,
 });
 
-
+//create user
 export const createUser = async (req: Request, res: Response) => {
   try {
     const {
@@ -39,7 +40,8 @@ if (github_id) orConditions.push({ github_id });
     const existingUser = await User.findOne({ $or: orConditions });
 
     if (existingUser) {
-      return res.status(409).json({ message: "User already exists" });
+       res.status(409).json({ message: "User already exists" });
+       return
     }
 
     const userDoc = new User({
@@ -61,13 +63,16 @@ if (github_id) orConditions.push({ github_id });
   }
 };
 
-
+// get user by id 
 export const getUserById = async (req: Request, res: Response) => {
   try {
-    const user = await User.findById(req.params.id).populate("file_details");
+    const userId = (req as any).user_id; // injected by verifyAuthMiddleware
+
+    const user = await User.findOne({ user_id: userId }).populate("file_details");
 
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      res.status(404).json({ message: "User not found" });
+      return;
     }
 
     res.json(toSharedUser(user));
@@ -76,14 +81,14 @@ export const getUserById = async (req: Request, res: Response) => {
     res.status(500).json({ message: "Internal server error" });
   }
 };
-
-
+//get user by githubid
 export const getUserByGithubId = async (req: Request, res: Response) => {
   try {
     const user = await User.findOne({ github_id: req.params.githubId }).populate("file_details");
 
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+       res.status(404).json({ message: "User not found" });
+       return
     }
 
     res.json(toSharedUser(user));
@@ -94,12 +99,14 @@ export const getUserByGithubId = async (req: Request, res: Response) => {
 };
 
 
+//getuserby googleid
 export const getUserByGoogleSubId = async (req: Request, res: Response) => {
   try {
     const user = await User.findOne({ google_sub_id: req.params.subId }).populate("file_details");
 
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+       res.status(404).json({ message: "User not found" });
+       return;
     }
 
     res.json(toSharedUser(user));

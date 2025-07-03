@@ -40,3 +40,34 @@ export interface User {
 
 
 export type ChunkCallback = (chunk: Buffer) => void;
+
+// Shared type for file metadata versioning
+export interface FileMetadataEntry {
+  _id: string;
+  version: number;
+}
+
+// Shared access level enum
+export type AccessLevel = "read" | "write";
+
+// Shared type for access permissions
+export interface SharedAccessEntry {
+  user_id?: string;
+  github_id?: string;
+  gmail?: string;
+  access_level: AccessLevel;
+}
+
+// Main File type (shared)
+export interface SharedFile {
+  file_id: string;
+  user: string; // user._id as string
+  file_name: string;
+  file_extension?: string;
+  file_size?: number;
+  mime_type?: string;
+  is_public: boolean;
+  shared_with: SharedAccessEntry[];
+  metadata: FileMetadataEntry[];
+  uploaded_at: string; // ISO string
+}
