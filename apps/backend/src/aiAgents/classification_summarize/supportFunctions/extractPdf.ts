@@ -1,5 +1,5 @@
 // extractPDF.js
-export async function extractPDFText(path) {
+export async function extractPDFText(path: string) {
   const fs = await import("fs/promises");
   const pdf = (await import("pdf-parse")).default;
 
