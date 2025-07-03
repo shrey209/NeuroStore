@@ -38,3 +38,6 @@ export const formatDate = (date: Date): string => {
     day: 'numeric'
   }).format(date);
 };
+
+
+export const BASE_URL="http://localhost:4000"

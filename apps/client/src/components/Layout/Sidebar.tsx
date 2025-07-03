@@ -12,6 +12,9 @@ import {
   HardDrive
 } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import axios from 'axios';
+
+import { BASE_URL } from '../../utils/fileUtils';
 
 const Sidebar: React.FC = () => {
   const location = useLocation();
@@ -31,6 +34,20 @@ const Sidebar: React.FC = () => {
   ];
 
   const isActive = (path: string) => location.pathname === path;
+
+  const handleLogout = async () => {
+  try {
+    const response = await axios.post(`${BASE_URL}/auth/logout`, {}, { withCredentials: true });
+
+    if (response.status === 200) {
+      navigate('/');
+    } else {
+      console.error('Logout failed with status:', response.status);
+    }
+  } catch (error) {
+    console.error('Logout error:', error);
+  }
+};
 
   return (
     <div className="w-64 bg-white border-r border-gray-200 h-full flex flex-col">
@@ -136,7 +153,8 @@ const Sidebar: React.FC = () => {
             <p className="text-xs text-gray-500 truncate">john@example.com</p>
           </div>
         </div>
-        <button className="w-full flex items-center px-3 py-2 text-sm font-medium text-gray-700 rounded-lg hover:bg-gray-50 transition-colors duration-200">
+        <button className="w-full flex items-center px-3 py-2 text-sm font-medium text-gray-700 rounded-lg hover:bg-gray-50 transition-colors duration-200"
+          onClick={handleLogout}>
           <LogOut className="w-4 h-4 mr-3 text-gray-400" />
           Sign Out
         </button>
