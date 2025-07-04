@@ -80,7 +80,7 @@ const Sidebar: React.FC = () => {
             <Database className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-gray-900">FileVault</h1>
+            <h1 className="text-xl font-bold text-gray-900">NeuroStore</h1>
             <p className="text-sm text-gray-500">Storage Service</p>
           </div>
         </div>

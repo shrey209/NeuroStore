@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import File from "../models/files";
-import { SharedFile, FileDataDTO } from "@neurostore/shared/types";
+import { SharedFile, FileDataDTO, SearchFilesDTO } from "@neurostore/shared/types";
 import { Types } from "mongoose";
 import User from "../models/users";
 import Metadata from "../models/metadata";
@@ -261,6 +261,45 @@ export const isPublic = async (req: Request, res: Response) => {
     res.json({ is_public: file.is_public });
   } catch (err) {
     console.error("Error checking public status:", err);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+
+
+export const searchFilesByName = async (req: Request, res: Response) => {
+  const user_id = res.locals.user_id;
+  const { query, page, size } = req.body as SearchFilesDTO;
+
+  try {
+    const regex = new RegExp(query, "i"); // case-insensitive regex match
+    const pageNumber = Math.max(1, page); // ensure page >= 1
+    const pageSize = Math.max(1, size);   // ensure size >= 1
+
+    // Query: only user's own files that match filename pattern
+    const filter = {
+      user: user_id,
+      file_name: { $regex: regex },
+    };
+
+    const total = await File.countDocuments(filter);
+
+    const files = await File.find(filter)
+      .skip((pageNumber - 1) * pageSize)
+      .limit(pageSize)
+      .sort({ uploaded_at: -1 }); // newest first
+
+    res.json({
+      files,
+      pagination: {
+        total,
+        page: pageNumber,
+        size: pageSize,
+        totalPages: Math.ceil(total / pageSize),
+      },
+    });
+  } catch (err) {
+    console.error("❌ Error searching files by name:", err);
     res.status(500).json({ message: "Internal server error" });
   }
 };

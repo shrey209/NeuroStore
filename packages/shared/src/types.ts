@@ -79,3 +79,9 @@ export interface FileDataDTO {
   file_size: number;
   chunks: ChunkData[];
 }
+
+export interface SearchFilesDTO {
+  query: string;    // filename search string (regex match)
+  page: number;     // current page number (1-based)
+  size: number;     // number of results per page
+}

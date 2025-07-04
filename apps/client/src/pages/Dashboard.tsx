@@ -9,8 +9,14 @@ import { FileItem, SearchFilters, PaginationInfo, AccessUser } from '../types';
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
+  const[searchbar,setSearchbar]=useState("")
+  const [currentPage, setCurrentPage] = useState(0);
+  const[pagesize,setPagesize]=useState(10)
+
+  
+
   const [loading, setLoading] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
+  
   const [files, setFiles] = useState<FileItem[]>(mockFiles);
   const [accessModalOpen, setAccessModalOpen] = useState(false);
   const [selectedFileForAccess, setSelectedFileForAccess] = useState<FileItem | null>(null);

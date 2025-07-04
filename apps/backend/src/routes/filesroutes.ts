@@ -7,6 +7,7 @@ import {
   getSharedWith,
   isPublic,
   getLatestMetadataByFilename,
+  searchFilesByName,
 } from "../controller/fileController";
 
 import { verifyAuthMiddleware,optionalAuthMiddleware } from "../middlewares/jwtMiddleware";
@@ -19,5 +20,6 @@ filerouter.post("/upload", verifyAuthMiddleware, uploadFile);
 filerouter.get("/:file_id/shared-with", verifyAuthMiddleware, getSharedWith);
 filerouter.get("/:file_id/is-public", isPublic); 
 filerouter.get("/filename/:filename/metadata/latest", verifyAuthMiddleware,getLatestMetadataByFilename);
+filerouter.post("/search", verifyAuthMiddleware, searchFilesByName);
 
 export default filerouter;
