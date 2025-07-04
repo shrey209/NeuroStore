@@ -128,9 +128,8 @@ const Upload: React.FC = () => {
        
       if(chunks.length==0){
         console.log("unfortunatlety there is no update in the file")
+        return
       }
-
-    //  const fileDataDTO=buildFileDataDto(file,chunks)
        const success = await uploadFileToServer(file, chunks);
 
   if (success) {
@@ -140,53 +139,52 @@ const Upload: React.FC = () => {
   } 
 
 
+ const ws = new WebSocket("ws://localhost:3000/ws/upload");
+  
+  let totalSentBytes = 0;
 
-    const ws = new WebSocket("ws://localhost:3000/ws/upload");
-    const userId = "user123";
-    let totalSentBytes = 0;
+  await new Promise<void>((resolve, reject) => {
+    ws.onopen = () => resolve();
+    ws.onerror = reject;
+  });
 
-    await new Promise<void>((resolve, reject) => {
-      ws.onopen = () => resolve();
-      ws.onerror = reject;
+  for (let i = 0; i < chunks.length; i++) {
+    const block = chunks[i];
+    const { sha, start, end } = block;
+
+    const slice = file.slice(start, end + 1); 
+    const buffer = await slice.arrayBuffer();
+    const view = new Uint8Array(buffer);
+    totalSentBytes += view.length;
+
+    
+    const base64 = btoa([...view].map(b => String.fromCharCode(b)).join(""));
+
+    const message = JSON.stringify({
+      chunk_no: i + 1,
+      sha,
+      filename: file.name,
+      data: base64
     });
 
-    for (let i = 0; i < chunks.length; i++) {
-      const block = chunks[i];
-      const { sha, start, end } = block;
+    ws.send(message);
+  }
 
-      const slice = file.slice(start, end + 1);
-      const buffer = await slice.arrayBuffer();
-      const view = new Uint8Array(buffer);
-      totalSentBytes += view.length;
+  console.log(` Total bytes read and sent: ${totalSentBytes}`);
+  console.log(` Original file size: ${file.size}`);
+  if (totalSentBytes !== file.size) {
+    console.error(" MISMATCH in file size vs total bytes sent!");
+  }
 
-      const base64 = btoa([...view].map(b => String.fromCharCode(b)).join(""));
+  ws.send("__EOF__");
 
-      const message = JSON.stringify({
-        chunk_no: i + 1,
-        sha,
-        user_id: userId,
-        filename: file.name,
-        data: base64
-      });
-
-      ws.send(message);
-    }
-
-    console.log(` Total bytes read and sent: ${totalSentBytes}`);
-    console.log(` Original file size: ${file.size}`);
-    if (totalSentBytes !== file.size) {
-      console.error(" MISMATCH in file size vs total bytes sent!");
-    }
-
-    ws.send("_EOF_");
-
-    await new Promise<void>((resolve) => {
-      ws.onclose = () => {
-        console.log("✅ WebSocket connection closed");
-        resolve();
-      };
-    });
-  };
+  await new Promise<void>((resolve) => {
+    ws.onclose = () => {
+      console.log("✅ WebSocket connection closed");
+      resolve();
+    };
+  });
+};
 
   const handleFile = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -240,31 +238,29 @@ const Upload: React.FC = () => {
     }
   };
 
-  const sendToBackend = async () => {
-    try {
-      const response = await fetch("http://localhost:3001/getfile", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          blocks,
-          filename,
-          extension,
-          size: fileSize
-        })
-      });
+  
+const sendToBackend = async () => {
+  try {
+    const response = await fetch("http://localhost:3001/getfile", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(blocks)
+    });
 
-      if (!response.ok) {
-        throw new Error(`Server error: ${response.status}`);
-      }
-
-      const result = await response.json();
-      console.log("📤 Sent blocks to backend. Response:", result);
-    } catch (err) {
-      console.error("❌ Failed to send to backend:", err);
+    if (!response.ok) {
+      throw new Error(`Server error: ${response.status}`);
     }
-  };
+
+    const result = await response.json();
+    console.log("📤 Sent blocks to backend. Response:", result);
+  } catch (err) {
+    console.error("❌ Failed to send to backend:", err);
+  }
+};
+
+
 
   return (
     <div className="p-4 font-mono">

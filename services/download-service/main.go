@@ -12,13 +12,10 @@ import (
 )
 
 type ChunkData struct {
-	ChunkNo  int    `json:"chunk_no"`
-	SHA      string `json:"sha"`
-	UserID   string `json:"user_id"`
-	FileName string `json:"filename"`
-	Data     string `json:"data"`
-	Start    int    `json:"start"`
-	End      int    `json:"end"`
+	ChunkNo int    `json:"chunk_no"`
+	SHA     string `json:"sha"`
+	Start   int    `json:"start"`
+	End     int    `json:"end"`
 }
 
 // func merge(chunks []ChunkMeta) []ChunkMeta {
@@ -124,8 +121,8 @@ func getFileHandler(w http.ResponseWriter, r *http.Request) {
 
 	var shaKeys []string
 	for _, c := range chunks {
-		fmt.Printf("Chunk %d: SHA=%s, Offset=%d-%d, File=%s, User=%s\n",
-			c.ChunkNo, c.SHA, c.Start, c.End, c.FileName, c.UserID)
+		fmt.Printf("Chunk %d: SHA=%s, Offset=%d-%d",
+			c.ChunkNo, c.SHA, c.Start, c.End)
 		shaKeys = append(shaKeys, c.SHA)
 	}
 
