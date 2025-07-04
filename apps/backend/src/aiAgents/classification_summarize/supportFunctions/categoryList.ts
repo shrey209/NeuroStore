@@ -1,5 +1,6 @@
 const fileCategories = [
   "Resume / CV",
+  "Coding / Bash",
   "Cover Letter / Job Application",
   "Invoice / Bill / Receipt",
   "Legal Document / Contract / Agreement",

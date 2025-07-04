@@ -3,7 +3,10 @@
   "private": true,
   "version": "1.0.0",
   "packageManager": "npm@10.5.0",
-  "workspaces": ["apps/*", "packages/*"],
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
     "dev": "turbo run dev",
     "dev:backend": "turbo run dev --filter=backend",
@@ -12,5 +15,8 @@
   },
   "devDependencies": {
     "turbo": "^1.10.0"
+  },
+  "dependencies": {
+    "officeparser": "^5.1.1"
   }
 }
