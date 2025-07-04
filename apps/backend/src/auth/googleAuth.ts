@@ -1,6 +1,7 @@
 import axios from "axios";
 import { createJWT } from "../auth/jwtutils";
 import User from "../models/users";
+import mongoose from "mongoose";
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID!;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET!;
@@ -62,7 +63,7 @@ export async function loginWithGoogle(code: string): Promise<{ token: string; us
     }).save();
   }
 
-  const token = createJWT({ id: user.user_id });
-
-  return { token, user_id: user.user_id };
+const mongoUserId = (user._id as mongoose.Types.ObjectId).toString();
+   const token = createJWT({ id: mongoUserId });
+ return { token, user_id: mongoUserId };
 }

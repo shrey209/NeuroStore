@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   Home, 
   FolderOpen, 
@@ -13,12 +13,32 @@ import {
 } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { User as SharedUser } from "@neurostore/shared/types";
 
 import { BASE_URL } from '../../utils/fileUtils';
 
 const Sidebar: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const [user, setUser] = useState<SharedUser | null>(null); 
+ const getInitials = (name: string) =>
+  name?.split(" ").map(word => word[0]).join("").toUpperCase().slice(0, 2);
+
+ useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const res = await axios.get(`${BASE_URL}/api/users/get`, {
+          withCredentials: true,
+        });
+        setUser(res.data); 
+      } catch (err) {
+        console.error("Error fetching user:", err);
+        setUser(null);
+      }
+    };
+
+    fetchUser();
+  }, []);
 
   const menuItems = [
     { icon: Home, label: 'Dashboard', path: '/dashboard', active: true },
@@ -49,6 +69,8 @@ const Sidebar: React.FC = () => {
   }
 };
 
+
+
   return (
     <div className="w-64 bg-white border-r border-gray-200 h-full flex flex-col">
       {/* Logo/Brand */}
@@ -58,7 +80,7 @@ const Sidebar: React.FC = () => {
             <Database className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-gray-900">FileVault</h1>
+            <h1 className="text-xl font-bold text-gray-900">NeuroStore</h1>
             <p className="text-sm text-gray-500">Storage Service</p>
           </div>
         </div>
@@ -145,12 +167,24 @@ const Sidebar: React.FC = () => {
       {/* User Profile & Logout */}
       <div className="p-4 border-t border-gray-100">
         <div className="flex items-center space-x-3 mb-3">
-          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-            <span className="text-white font-semibold text-sm">JD</span>
-          </div>
+        {user?.profile_picture ? (
+  <div className="w-10 h-10 rounded-full overflow-hidden">
+    <img
+      src={user.profile_picture}
+      alt="User Profile"
+      className="w-full h-full object-cover"
+    />
+  </div>
+) : (
+  <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+    <span className="text-white font-semibold text-sm">
+      {getInitials(user?.user_name || "")}
+    </span>
+  </div>
+)}
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-gray-900 truncate">John Doe</p>
-            <p className="text-xs text-gray-500 truncate">john@example.com</p>
+            <p className="text-sm font-medium text-gray-900 truncate">{user?.user_name}</p>
+            <p className="text-xs text-gray-500 truncate">{user?.gmail}</p>
           </div>
         </div>
         <button className="w-full flex items-center px-3 py-2 text-sm font-medium text-gray-700 rounded-lg hover:bg-gray-50 transition-colors duration-200"

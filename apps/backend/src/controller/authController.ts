@@ -8,9 +8,9 @@ const isProduction = process.env.NODE_ENV === "production";
 
 const cookieOptions: CookieOptions = {
   httpOnly: true,
-  secure: isProduction, // HTTPS only in production
-  sameSite: isProduction ? "none" : "lax", // Lax for local dev, None for cross-site in prod
-  maxAge: 24 * 60 * 60 * 1000, // 1 day
+  secure: isProduction, 
+  sameSite: isProduction ? "none" : "lax", 
+  maxAge: 24 * 60 * 60 * 1000, 
 };
 
 export async function githubCallbackController(req: Request, res: Response): Promise<void> {

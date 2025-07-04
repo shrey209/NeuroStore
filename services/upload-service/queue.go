@@ -2,24 +2,17 @@ package main
 
 import (
 	"fmt"
-	"log/slog"
 	"sync"
 	"time"
 )
 
-/*
-**concurrent queue impl **
-we are storing list of list in queue idea is thats its faster
-to store the list instead of copy all elements in the queue one by one.
-*/
 type ConcurrentChunkDeque struct {
-	queue         [][]Chunk  //to store faster
-	totalChunks   int        // total chunks present in the queue
-	lock          sync.Mutex // lock mutex
-	lastflushtime time.Time  // denotes when the last time flush happend
+	queue         [][]Chunk
+	totalChunks   int
+	lock          sync.Mutex
+	lastflushtime time.Time
 }
 
-// init the queue
 func NewConcurrentChunkDeque() *ConcurrentChunkDeque {
 	return &ConcurrentChunkDeque{
 		queue:       [][]Chunk{},
@@ -86,15 +79,16 @@ func (q *ConcurrentChunkDeque) Drain() [][]Chunk {
 	return drained
 }
 
-/*
-Dispatcher which runs every 10 seconds
-the job of dispatcher is to
-*/
+func (q *ConcurrentChunkDeque) enqueueFrontNoLock(chunkSlice []Chunk) {
+	q.queue = append([][]Chunk{chunkSlice}, q.queue...)
+	q.totalChunks += len(chunkSlice)
+}
+
 func StartDispatcher(q *ConcurrentChunkDeque) {
 	go func() {
 		for {
 			time.Sleep(10 * time.Second)
-			slog.Info("[Dispatcher] Checking queue...")
+			fmt.Println("[Dispatcher] Checking queue...")
 
 			q.lock.Lock()
 
@@ -105,7 +99,7 @@ func StartDispatcher(q *ConcurrentChunkDeque) {
 				cur := 500
 				if q.totalChunks < 500 {
 					cur = q.totalChunks
-					fmt.Printf("[Dispatcher] Forcing flush due to 60s inactivity")
+					fmt.Println("[Dispatcher] Forcing flush due to 60s inactivity")
 				}
 
 				var task [][]Chunk

@@ -7,7 +7,6 @@ export interface IUserModel extends Omit<SharedUser, "created_at" | "file_detail
 }
 
 const userSchema = new Schema<IUserModel>({
-  user_id: { type: String, unique: true, required: true },
   user_name: { type: String, required: true },
   provider: {
     type: String,
@@ -24,8 +23,6 @@ const userSchema = new Schema<IUserModel>({
     },
   ],
   created_at: { type: Date, default: Date.now },
-
-  
   google_sub_id: { type: String, index: true, sparse: true, unique: true },
   github_id: { type: String, index: true, sparse: true, unique: true },
 });

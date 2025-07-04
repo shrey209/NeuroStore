@@ -2,6 +2,7 @@ import axios from "axios";
 import { createJWT } from "../auth/jwtutils";
 import User from "../models/users";
 import { User as SharedUser } from "@neurostore/shared/types";
+import mongoose from "mongoose";
 
 const CLIENT_ID = process.env.CLIENT_ID!;
 const CLIENT_SECRET = process.env.CLIENT_SECRET!;
@@ -73,7 +74,8 @@ export async function loginWithGitHub(code: string): Promise<{ token: string; us
   }
 
   
-  const jwt = createJWT({ id: user.user_id });
+   const mongoUserId = (user._id as mongoose.Types.ObjectId).toString();
+   const token = createJWT({ id: mongoUserId });
+ return { token, user_id: mongoUserId };
 
-  return { token: jwt, user_id: user.user_id };
 }
