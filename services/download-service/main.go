@@ -151,6 +151,11 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
+type WSMessage struct {
+	Type string      `json:"type"` // "chunk" or "end"
+	Data []ChunkData `json:"data"`
+}
+
 func wsGetFileHandler(w http.ResponseWriter, r *http.Request) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -160,6 +165,8 @@ func wsGetFileHandler(w http.ResponseWriter, r *http.Request) {
 	defer conn.Close()
 
 	log.Println("🔌 WebSocket connection established")
+
+	var collectedChunks []ChunkData // <-- collect until we receive "end"
 
 	for {
 		_, message, err := conn.ReadMessage()
@@ -171,38 +178,52 @@ func wsGetFileHandler(w http.ResponseWriter, r *http.Request) {
 		log.Println("🔵 WebSocket received data:")
 		log.Println(string(message))
 
-		var chunks []ChunkData
-		if err := json.Unmarshal(message, &chunks); err != nil {
+		var msg WSMessage
+		if err := json.Unmarshal(message, &msg); err != nil {
+			log.Println("❌ Failed to parse WSMessage:", err)
 			conn.WriteJSON(map[string]string{
-				"error": "Invalid JSON format",
+				"error": "Invalid message format",
 			})
 			continue
 		}
 
-		sort.Slice(chunks, func(i, j int) bool {
-			return chunks[i].ChunkNo < chunks[j].ChunkNo
-		})
+		switch msg.Type {
+		case "chunk":
+			collectedChunks = append(collectedChunks, msg.Data...)
+			log.Printf("🧩 Appended %d chunks (total: %d)", len(msg.Data), len(collectedChunks))
 
-		var shaKeys []string
-		for _, c := range chunks {
-			log.Printf("Chunk %d: SHA=%s, Offset=%d-%d\n",
-				c.ChunkNo, c.SHA, c.Start, c.End)
-			shaKeys = append(shaKeys, c.SHA)
-		}
+		case "end":
+			log.Println("✅ Received 'end' signal. Processing chunks...")
 
-		metas, err := FetchChunkMetadata(RedisClient, shaKeys)
-		if err != nil {
-			conn.WriteJSON(map[string]string{
-				"error": "Failed to fetch metadata",
+			sort.Slice(collectedChunks, func(i, j int) bool {
+				return collectedChunks[i].ChunkNo < collectedChunks[j].ChunkNo
 			})
-			continue
+
+			var shaKeys []string
+			for _, c := range collectedChunks {
+				log.Printf("Chunk %d: SHA=%s, Offset=%d-%d", c.ChunkNo, c.SHA, c.Start, c.End)
+				shaKeys = append(shaKeys, c.SHA)
+			}
+
+			metas, err := FetchChunkMetadata(RedisClient, shaKeys)
+			if err != nil {
+				conn.WriteJSON(map[string]string{
+					"error": "Failed to fetch metadata",
+				})
+				break
+			}
+
+			grouped := OrganizeAndSortChunks(metas)
+			DownloadAndStreamChunks(grouped, conn)
+			log.Println("📤 File streaming complete. Closing connection.")
+			return // or break
+
+		default:
+			log.Println("❌ Unknown message type:", msg.Type)
+			conn.WriteJSON(map[string]string{
+				"error": "Unknown message type",
+			})
 		}
-
-		grouped := OrganizeAndSortChunks(metas)
-
-		DownloadAndStreamChunks(grouped, conn)
-		conn.Close()
-		fmt.Println("connection closed -------")
 	}
 }
 
