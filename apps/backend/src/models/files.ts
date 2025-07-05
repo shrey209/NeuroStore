@@ -49,6 +49,7 @@ const fileSchema = new mongoose.Schema({
   ],
 
   uploaded_at: { type: Date, default: Date.now },
+  tags: [{ type: String }],
 });
 
 export default mongoose.model("File", fileSchema);

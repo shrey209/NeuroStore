@@ -200,6 +200,7 @@ export const uploadFile = async (req: Request, res: Response) => {
         mime_type,
         is_public: false,
         shared_with: [],
+        tags:[],
         metadata: [metadataEntry],
         uploaded_at: new Date(),
       });

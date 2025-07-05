@@ -139,3 +139,91 @@ export const mockFiles: FileItem[] = [
     ]
   }
 ];
+
+
+ // Mock data for demonstration
+  // const mockFiles: SharedFile[] = [
+  //   {
+  //     file_id: '1',
+  //     user: 'user123',
+  //     file_name: 'Project Proposal.pdf',
+  //     file_extension: 'pdf',
+  //     file_size: 2048576,
+  //     mime_type: 'application/pdf',
+  //     is_public: true,
+  //     tags: ['important', 'project', 'proposal'],
+  //     shared_with: [],
+  //     metadata: [],
+  //     uploaded_at: '2024-01-15T10:30:00Z'
+  //   },
+  //   {
+  //     file_id: '2',
+  //     user: 'user123',
+  //     file_name: 'Design Mockup.fig',
+  //     file_extension: 'fig',
+  //     file_size: 5242880,
+  //     mime_type: 'application/octet-stream',
+  //     is_public: false,
+  //     tags: ['design', 'ui', 'mockup', 'figma'],
+  //     shared_with: [
+  //       { user_id: 'user456', access_level: 'read' },
+  //       { user_id: 'user789', access_level: 'write' }
+  //     ],
+  //     metadata: [],
+  //     uploaded_at: '2024-01-14T14:22:00Z'
+  //   },
+  //   {
+  //     file_id: '3',
+  //     user: 'user123',
+  //     file_name: 'Data Analysis.xlsx',
+  //     file_extension: 'xlsx',
+  //     file_size: 1048576,
+  //     mime_type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  //     is_public: false,
+  //     tags: ['data', 'analysis', 'spreadsheet'],
+  //     shared_with: [],
+  //     metadata: [],
+  //     uploaded_at: '2024-01-13T09:15:00Z'
+  //   },
+  //   {
+  //     file_id: '4',
+  //     user: 'user123',
+  //     file_name: 'Profile Picture.jpg',
+  //     file_extension: 'jpg',
+  //     file_size: 512000,
+  //     mime_type: 'image/jpeg',
+  //     is_public: true,
+  //     tags: ['profile', 'photo', 'personal'],
+  //     shared_with: [],
+  //     metadata: [],
+  //     uploaded_at: '2024-01-12T16:45:00Z'
+  //   },
+  //   {
+  //     file_id: '5',
+  //     user: 'user123',
+  //     file_name: 'Marketing Video.mp4',
+  //     file_extension: 'mp4',
+  //     file_size: 52428800,
+  //     mime_type: 'video/mp4',
+  //     is_public: false,
+  //     tags: ['marketing', 'video', 'campaign', 'promotion'],
+  //     shared_with: [
+  //       { user_id: 'user456', access_level: 'read' }
+  //     ],
+  //     metadata: [],
+  //     uploaded_at: '2024-01-11T11:20:00Z'
+  //   },
+  //   {
+  //     file_id: '6',
+  //     user: 'user123',
+  //     file_name: 'Database Schema.sql',
+  //     file_extension: 'sql',
+  //     file_size: 204800,
+  //     mime_type: 'application/sql',
+  //     is_public: false,
+  //     tags: ['database', 'schema', 'development'],
+  //     shared_with: [],
+  //     metadata: [],
+  //     uploaded_at: '2024-01-10T08:30:00Z'
+  //   }
+  // ];

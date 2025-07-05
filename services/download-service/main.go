@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"sort"
 
+	"github.com/gorilla/websocket"
 	"github.com/rs/cors"
 )
 
@@ -144,12 +145,76 @@ func getFileHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(`{"status":"ok"}`))
 }
 
+var upgrader = websocket.Upgrader{
+	CheckOrigin: func(r *http.Request) bool {
+		return true // Allow all origins (customize as needed)
+	},
+}
+
+func wsGetFileHandler(w http.ResponseWriter, r *http.Request) {
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Println("❌ WebSocket upgrade failed:", err)
+		return
+	}
+	defer conn.Close()
+
+	log.Println("🔌 WebSocket connection established")
+
+	for {
+		_, message, err := conn.ReadMessage()
+		if err != nil {
+			log.Println("❌ WebSocket read error:", err)
+			break
+		}
+
+		log.Println("🔵 WebSocket received data:")
+		log.Println(string(message))
+
+		var chunks []ChunkData
+		if err := json.Unmarshal(message, &chunks); err != nil {
+			conn.WriteJSON(map[string]string{
+				"error": "Invalid JSON format",
+			})
+			continue
+		}
+
+		sort.Slice(chunks, func(i, j int) bool {
+			return chunks[i].ChunkNo < chunks[j].ChunkNo
+		})
+
+		var shaKeys []string
+		for _, c := range chunks {
+			log.Printf("Chunk %d: SHA=%s, Offset=%d-%d\n",
+				c.ChunkNo, c.SHA, c.Start, c.End)
+			shaKeys = append(shaKeys, c.SHA)
+		}
+
+		metas, err := FetchChunkMetadata(RedisClient, shaKeys)
+		if err != nil {
+			conn.WriteJSON(map[string]string{
+				"error": "Failed to fetch metadata",
+			})
+			continue
+		}
+
+		grouped := OrganizeAndSortChunks(metas)
+
+		go DownloadAndAssembleFiles(grouped)
+
+		conn.WriteJSON(map[string]string{
+			"status": "Download started",
+		})
+	}
+}
+
 func main() {
 	InitRedis()
 	InitS3()
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/getfile", getFileHandler)
+	mux.HandleFunc("/ws-getfile", wsGetFileHandler)
 
 	handler := cors.Default().Handler(mux)
 

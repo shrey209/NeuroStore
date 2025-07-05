@@ -1,221 +1,261 @@
-import React, { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
-
-import SearchBar from '../components/Search/SearchBar';
-import FileList from '../components/Files/FileList';
-import AccessManagementModal from '../components/Modals/AccessManagementModal';
-import { mockFiles } from '../data/mockFiles';
-import { FileItem, SearchFilters, PaginationInfo, AccessUser } from '../types';
+import React, { useState, useEffect } from 'react';
+import { Search, Filter, Grid, List, Sparkles, X, Plus } from 'lucide-react';
+import FileCard from '../components/Files/FileCard';
+import { SharedFile, SearchFilesDTO }from  '@neurostore/shared/types';
+import { BASE_URL } from '../utils/fileUtils';
+import axios from 'axios';
 
 const Dashboard: React.FC = () => {
-  const navigate = useNavigate();
-  const[searchbar,setSearchbar]=useState("")
-  const [currentPage, setCurrentPage] = useState(0);
-  const[pagesize,setPagesize]=useState(10)
-
-  
-
+  const [files, setFiles] = useState<SharedFile[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [availableTags, setAvailableTags] = useState<string[]>([]);
+  const [showTagFilter, setShowTagFilter] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [loading, setLoading] = useState(false);
-  
-  const [files, setFiles] = useState<FileItem[]>(mockFiles);
-  const [accessModalOpen, setAccessModalOpen] = useState(false);
-  const [selectedFileForAccess, setSelectedFileForAccess] = useState<FileItem | null>(null);
-  const itemsPerPage = 12;
 
-  const [filters, setFilters] = useState<SearchFilters>({
-    query: '',
-    searchType: 'normal',
-    selectedTags: []
+ 
+  // TODO: Replace with actual API call
+ useEffect(() => {
+  const fetchFiles = async () => {
+    try {
+      const response = await axios.post(`${BASE_URL}/api/file/search`, {
+        query: searchQuery,
+        page: currentPage,
+        size: 10
+      } , {
+    withCredentials: true, 
   });
 
-  // Get all unique tags
-  const availableTags = useMemo(() => {
-    const allTags = files.flatMap(file => file.tags);
-    return Array.from(new Set(allTags)).sort();
-  }, [files]);
-
-  // Filter files based on search criteria
-  const filteredFiles = useMemo(() => {
-    let filtered = [...files];
-
-    // Apply query filter
-    if (filters.query) {
-      const query = filters.query.toLowerCase();
-      switch (filters.searchType) {
-        case 'normal':
-          filtered = filtered.filter(file =>
-            file.filename.toLowerCase().includes(query)
-          );
-          break;
-        case 'semantic':
-          // Simulate semantic search by searching in tags and filename
-          filtered = filtered.filter(file =>
-            file.filename.toLowerCase().includes(query) ||
-            file.tags.some(tag => tag.toLowerCase().includes(query))
-          );
-          break;
-        case 'tags':
-          filtered = filtered.filter(file =>
-            file.tags.some(tag => tag.toLowerCase().includes(query))
-          );
-          break;
-      }
-    }
-
-    // Apply tag filters
-    if (filters.selectedTags.length > 0) {
-      filtered = filtered.filter(file =>
-        filters.selectedTags.some(selectedTag =>
-          file.tags.includes(selectedTag)
-        )
-      );
-    }
-
-    return filtered;
-  }, [filters, files]);
-
-  // Paginate results
-  const paginatedFiles = useMemo(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
-    return filteredFiles.slice(startIndex, endIndex);
-  }, [filteredFiles, currentPage, itemsPerPage]);
-
-  const pagination: PaginationInfo = {
-    currentPage,
-    totalPages: Math.ceil(filteredFiles.length / itemsPerPage),
-    totalItems: filteredFiles.length,
-    itemsPerPage
-  };
-
-  const handleFiltersChange = (newFilters: SearchFilters) => {
-    setFilters(newFilters);
-    setCurrentPage(1); // Reset to first page when filters change
-  };
-
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
-  };
-
-  const handleFileClick = (file: FileItem) => {
-    navigate(`/preview/${file.id}`);
-  };
-
-  const handleAddTag = (fileId: string, tag: string) => {
-    setFiles(prevFiles => 
-      prevFiles.map(file => 
-        file.id === fileId 
-          ? { ...file, tags: [...file.tags, tag] }
-          : file
-      )
-    );
-  };
-
-  const handleManageAccess = (fileId: string) => {
-    const file = files.find(f => f.id === fileId);
-    if (file) {
-      setSelectedFileForAccess(file);
-      setAccessModalOpen(true);
+      setFiles(response.data.files || []);
+      console.log(response.data.files)
+    } catch (error) {
+      console.error("Error fetching files:", error);
     }
   };
 
-  const handleDeleteFile = (fileId: string) => {
-    setFiles(prevFiles => prevFiles.filter(file => file.id !== fileId));
+  fetchFiles();
+}, [searchQuery, currentPage]);
+
+
+  // TODO: Implement search functionality with backend
+  const handleSearch = (query: string) => {
+    setSearchQuery(query);
+    // TODO: This will be sent to backend later
+    const searchDTO: SearchFilesDTO = {
+      query,
+      page: currentPage,
+      size: 20
+    };
+    console.log('Search with:', searchDTO);
   };
 
-  const handleRenameFile = (fileId: string, newName: string) => {
-    setFiles(prevFiles =>
-      prevFiles.map(file =>
-        file.id === fileId
-          ? { ...file, filename: newName }
-          : file
-      )
-    );
+  // TODO: Implement semantic search functionality
+  const handleSemanticSearch = () => {
+    console.log('Semantic search triggered with query:', searchQuery);
+    console.log('Selected tags for semantic search:', selectedTags);
+    // TODO: Implement semantic search API call
+    // This will use AI/ML to find semantically similar files
   };
 
-  const handleViewVersions = (fileId: string) => {
-    // Placeholder for version history functionality
-    console.log('View versions for file:', fileId);
-    // You can implement a modal or navigate to a versions page
-  };
-
-  const handleUpdateAccess = (accessLevel: 'private' | 'shared' | 'public', users: AccessUser[]) => {
-    if (selectedFileForAccess) {
-      setFiles(prevFiles =>
-        prevFiles.map(file =>
-          file.id === selectedFileForAccess.id
-            ? { ...file, accessLevel, sharedUsers: users }
-            : file
-        )
-      );
+  const handleTagSelect = (tag: string) => {
+    if (selectedTags.includes(tag)) {
+      setSelectedTags(selectedTags.filter(t => t !== tag));
+    } else {
+      setSelectedTags([...selectedTags, tag]);
     }
   };
 
-  return (
-    <div className="flex h-screen bg-gray-50">
-     
-      
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Header */}
-        <div className="bg-white border-b border-gray-200 px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-              <p className="text-gray-600 mt-1">Manage and organize your files</p>
-            </div>
-            <div className="flex items-center space-x-4">
-              <div className="text-sm text-gray-500">
-                <span className="font-medium">{filteredFiles.length}</span> files total
-              </div>
-            </div>
-          </div>
-        </div>
+  const removeSelectedTag = (tag: string) => {
+    setSelectedTags(selectedTags.filter(t => t !== tag));
+  };
 
-        {/* Main Content */}
-        <div className="flex-1 overflow-auto">
-          <div className="p-6 space-y-6">
-            {/* Search Section */}
-            <div className="bg-white rounded-lg border border-gray-200 p-6">
-              <SearchBar
-                filters={filters}
-                onFiltersChange={handleFiltersChange}
-                availableTags={availableTags}
-              />
-            </div>
+  const clearAllTags = () => {
+    setSelectedTags([]);
+  };
 
-            {/* File List */}
-            <div className="bg-white rounded-lg border border-gray-200 p-6">
-              <FileList
-                files={paginatedFiles}
-                pagination={pagination}
-                onPageChange={handlePageChange}
-                onFileClick={handleFileClick}
-                onAddTag={handleAddTag}
-                onManageAccess={handleManageAccess}
-                onDeleteFile={handleDeleteFile}
-                onRenameFile={handleRenameFile}
-                onViewVersions={handleViewVersions}
-                loading={loading}
-              />
-            </div>
+  // Filter files based on search query and selected tags
+  const filteredFiles = files.filter(file => {
+    const matchesSearch = file.file_name.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesTags = selectedTags.length === 0 || selectedTags.some(tag => file.tags.includes(tag));
+    return matchesSearch && matchesTags;
+  });
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex items-center justify-center h-64">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
           </div>
         </div>
       </div>
+    );
+  }
 
-      {/* Access Management Modal */}
-      {selectedFileForAccess && (
-        <AccessManagementModal
-          isOpen={accessModalOpen}
-          onClose={() => {
-            setAccessModalOpen(false);
-            setSelectedFileForAccess(null);
-          }}
-          fileName={selectedFileForAccess.filename}
-          currentAccessLevel={selectedFileForAccess.accessLevel || 'private'}
-          sharedUsers={selectedFileForAccess.sharedUsers || []}
-          onUpdateAccess={handleUpdateAccess}
-        />
-      )}
+  return (
+    <div className="min-h-screen bg-gray-50 p-6">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Dashboard</h1>
+          <p className="text-gray-600">Manage and organize your files</p>
+        </div>
+
+        {/* Search and Filters */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+          <div className="flex flex-col gap-4">
+            {/* Search Bar Row */}
+            <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+              <div className="relative flex-1 max-w-md">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <input
+                  type="text"
+                  placeholder="Search files..."
+                  value={searchQuery}
+                  onChange={(e) => handleSearch(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              
+              <div className="flex items-center space-x-4">
+                <button 
+                  onClick={handleSemanticSearch}
+                  className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-blue-600 text-white rounded-lg hover:from-purple-600 hover:to-blue-700 transition-all duration-200 shadow-sm"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  <span>Semantic Search</span>
+                </button>
+                
+                <button 
+                  onClick={() => setShowTagFilter(!showTagFilter)}
+                  className="flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors duration-200"
+                >
+                  <Filter className="w-4 h-4" />
+                  <span>Filter by Tags</span>
+                </button>
+                
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => setViewMode('grid')}
+                    className={`p-2 rounded-lg transition-colors duration-200 ${
+                      viewMode === 'grid' ? 'bg-blue-100 text-blue-600' : 'text-gray-400 hover:bg-gray-100'
+                    }`}
+                  >
+                    <Grid className="w-5 h-5" />
+                  </button>
+                  <button
+                    onClick={() => setViewMode('list')}
+                    className={`p-2 rounded-lg transition-colors duration-200 ${
+                      viewMode === 'list' ? 'bg-blue-100 text-blue-600' : 'text-gray-400 hover:bg-gray-100'
+                    }`}
+                  >
+                    <List className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Tag Filter Section */}
+            {showTagFilter && (
+              <div className="border-t pt-4">
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {availableTags.map((tag) => (
+                    <button
+                      key={tag}
+                      onClick={() => handleTagSelect(tag)}
+                      className={`px-3 py-1 rounded-full text-sm font-medium transition-colors duration-200 ${
+                        selectedTags.includes(tag)
+                          ? 'bg-blue-100 text-blue-700 border border-blue-200'
+                          : 'bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200'
+                      }`}
+                    >
+                      {tag}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Selected Tags Display */}
+            {selectedTags.length > 0 && (
+              <div className="border-t pt-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium text-gray-700">Selected Tags:</span>
+                  <button
+                    onClick={clearAllTags}
+                    className="text-sm text-gray-500 hover:text-gray-700 transition-colors duration-200"
+                  >
+                    Clear All
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {selectedTags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-700 border border-blue-200"
+                    >
+                      {tag}
+                      <button
+                        onClick={() => removeSelectedTag(tag)}
+                        className="ml-2 hover:text-blue-900 transition-colors duration-200"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* File Grid/List */}
+        {filteredFiles.length === 0 ? (
+          <div className="text-center py-12">
+            <div className="text-gray-400 mb-4">
+              <Search className="w-12 h-12 mx-auto" />
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No files found</h3>
+            <p className="text-gray-500">Try adjusting your search query or filters</p>
+          </div>
+        ) : (
+          <div className={`grid gap-6 ${
+            viewMode === 'grid' 
+              ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' 
+              : 'grid-cols-1'
+          }`}>
+            {filteredFiles.map((file) => (
+              <FileCard key={file.file_id} file={file} />
+            ))}
+          </div>
+        )}
+
+        {/* Pagination */}
+        {filteredFiles.length > 0 && (
+          <div className="mt-8 flex justify-center">
+            <nav className="flex items-center space-x-2">
+              <button
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                disabled={currentPage === 1}
+                className="px-3 py-2 rounded-lg border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Previous
+              </button>
+              <span className="px-4 py-2 text-sm text-gray-700">
+                Page {currentPage}
+              </span>
+              <button
+                onClick={() => setCurrentPage(prev => prev + 1)}
+                className="px-3 py-2 rounded-lg border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Next
+              </button>
+            </nav>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
