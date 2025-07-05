@@ -86,3 +86,5 @@ export interface SearchFilesDTO {
   page: number;     // current page number (1-based)
   size: number;     // number of results per page
 }
+
+

@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import File from "../models/files";
-import { SharedFile, FileDataDTO, SearchFilesDTO } from "@neurostore/shared/types";
+import { SharedFile, FileDataDTO, SearchFilesDTO, ChunkData } from "@neurostore/shared/types";
 import { Types } from "mongoose";
 import User from "../models/users";
 import Metadata from "../models/metadata";
@@ -302,5 +302,75 @@ export const searchFilesByName = async (req: Request, res: Response) => {
   } catch (err) {
     console.error("❌ Error searching files by name:", err);
     res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+
+//get latest file data by chunk id 
+export const getLatestFileDataByFileId = async (req: Request, res: Response) => {
+  const { file_id } = req.params;
+  const user_id = res.locals.user_id;
+
+  if (!user_id) {
+     res.status(401).json({ message: "Unauthorized: No user ID" });
+     return;
+  }
+
+  try {
+    // Step 1: Try finding file owned by the user
+    let file = await File.findOne({ file_id, user: user_id });
+
+    // Step 2: If not owner, try shared file with write access
+    if (!file) {
+      file = await File.findOne({ file_id });
+      if (!file || !file.metadata.length) {
+         res.status(404).json({ message: "File or metadata not found" });
+         return
+      }
+
+      const user = await User.findById(user_id);
+      if (!user) {
+         res.status(403).json({ message: "User not found" });
+         return;
+      }
+
+      const hasAccess = file.shared_with.some(entry =>
+        entry.access_level === "read" || entry.access_level==="write" &&
+        (
+          (entry.github_id && entry.github_id === user.github_id) ||
+          (entry.gmail && entry.gmail === user.gmail)
+        )
+      );
+
+      if (!hasAccess) {
+         res.status(403).json({ message: "Access denied" });
+         return;
+      }
+    }
+
+    // Step 3: Get latest metadata
+    const latest = file.metadata.reduce((a, b) => (b.version > a.version ? b : a));
+    const metadataDoc = await Metadata.findById(latest._id);
+
+    if (!metadataDoc) {
+       res.status(404).json({ message: "Metadata not found" });
+       return;
+    }
+
+    // Step 4: Build DTO
+    const fileDataDTO: FileDataDTO = {
+      file_name: file.file_name,
+      file_extension: file.file_extension || "",
+      mime_type: file.mime_type || "",
+      file_size: file.file_size || 0,
+      chunks: metadataDoc.chunks as ChunkData[],
+    };
+
+     res.json(fileDataDTO);
+     return;
+  } catch (err) {
+    console.error("Error in getLatestFileDataByFileId:", err);
+     res.status(500).json({ message: "Internal server error" });
+     return;
   }
 };

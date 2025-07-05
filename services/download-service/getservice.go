@@ -2,12 +2,15 @@ package main
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"sort"
 	"sync"
 
+	"github.com/gorilla/websocket"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -117,4 +120,52 @@ func DownloadAndAssembleFiles(metaMap map[string][][]int) {
 	}
 
 	fmt.Println("✅ All chunks successfully written to output.pdf")
+}
+
+func DownloadAndStreamChunks(metaMap map[string][][]int, conn *websocket.Conn) {
+	var wg sync.WaitGroup
+	ch := make(chan Wrapper, 100)
+
+	for filename, ranges := range metaMap {
+		for _, chunk := range ranges {
+			if len(chunk) != 3 {
+				fmt.Println("⚠️ Invalid chunk format, expected [chunkNo, start, end]")
+				continue
+			}
+			chunkNo := chunk[0]
+			start := chunk[1]
+			end := chunk[2]
+
+			wg.Add(1)
+			go func(f string, no, s, e int) {
+				defer wg.Done()
+				data, err := FetchByteRangeFromS3(f, s, e)
+				ch <- Wrapper{ChunkNo: no, Data: data, Err: err}
+			}(filename, chunkNo, start, end)
+		}
+	}
+
+	go func() {
+		wg.Wait()
+		close(ch)
+	}()
+
+	for wrapper := range ch {
+		if wrapper.Err != nil {
+			log.Printf("❌ Failed to fetch chunk %d: %v\n", wrapper.ChunkNo, wrapper.Err)
+			continue
+		}
+
+		err := conn.WriteJSON(struct {
+			ChunkNo int    `json:"chunk_no"`
+			Data    string `json:"data"` // base64 encoded
+		}{
+			ChunkNo: wrapper.ChunkNo,
+			Data:    base64.StdEncoding.EncodeToString(wrapper.Data),
+		})
+		if err != nil {
+			log.Printf("❌ Failed to send chunk %d: %v", wrapper.ChunkNo, err)
+			break
+		}
+	}
 }

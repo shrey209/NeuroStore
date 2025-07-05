@@ -200,11 +200,9 @@ func wsGetFileHandler(w http.ResponseWriter, r *http.Request) {
 
 		grouped := OrganizeAndSortChunks(metas)
 
-		go DownloadAndAssembleFiles(grouped)
-
-		conn.WriteJSON(map[string]string{
-			"status": "Download started",
-		})
+		DownloadAndStreamChunks(grouped, conn)
+		conn.Close()
+		fmt.Println("connection closed -------")
 	}
 }
 
