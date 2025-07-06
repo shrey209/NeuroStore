@@ -35,7 +35,7 @@ const hasFetched = useRef(false);
   hasFetched.current = true;
 
     const fetchAndDownload = async () => {
-      const receivedChunks: Wrapper[] = []; // ✅ initialize it
+      const receivedChunks: Wrapper[] = []; 
 
       try {
         const response = await axios.get<FileDataDTO>(
@@ -92,6 +92,8 @@ const hasFetched = useRef(false);
         };
 
         socket.onclose = () => {
+          
+
           const sortedChunks = receivedChunks
             .filter((chunk) => !chunk.err)
             .sort((a, b) => a.chunk_no - b.chunk_no);

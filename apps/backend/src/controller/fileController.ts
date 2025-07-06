@@ -374,3 +374,55 @@ export const getLatestFileDataByFileId = async (req: Request, res: Response) => 
      return;
   }
 };
+
+
+export const deleteFileById = async (req: Request, res: Response) => {
+  const { fileId } = req.params;
+
+  try {
+    const deletedFile = await File.findOneAndDelete({ file_id: fileId });
+
+    if (!deletedFile) {
+       res.status(404).json({ error: "File not found" });
+       return;
+    }
+
+     res.status(200).json({ message: "File deleted successfully" });
+     return;
+  } catch (error) {
+    console.error("❌ Failed to delete file:", error);
+    res.status(500).json({ error: "Internal server error" });
+    return;
+  }
+};
+
+// PATCH /api/file/:fileId
+export const updateFileName = async (req: Request, res: Response) => {
+  const { fileId } = req.params;
+  const { file_name } = req.body;
+
+  if (!file_name || typeof file_name !== "string") {
+     res.status(400).json({ error: "Invalid or missing file_name" });
+     return;
+  }
+
+  try {
+    const updated = await File.findOneAndUpdate(
+      { file_id: fileId },
+      { file_name },
+      { new: true }
+    );
+
+    if (!updated) {
+       res.status(404).json({ error: "File not found" });
+       return;
+    }
+
+     res.status(200).json({ message: "File name updated", file: updated });
+     return;
+  } catch (error) {
+    console.error("❌ Failed to update file name:", error);
+     res.status(500).json({ error: "Internal server error" });
+     return;
+  }
+};

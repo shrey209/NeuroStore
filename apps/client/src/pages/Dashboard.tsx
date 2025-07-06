@@ -75,6 +75,11 @@ const Dashboard: React.FC = () => {
     setSelectedTags([]);
   };
 
+  const handleRemoveFile = (deletedFileId: string) => {
+  setFiles(prevFiles => prevFiles.filter(file => file.file_id !== deletedFileId));
+};
+
+
   // Filter files based on search query and selected tags
   const filteredFiles = files.filter(file => {
     const matchesSearch = file.file_name.toLowerCase().includes(searchQuery.toLowerCase());
@@ -227,7 +232,7 @@ const Dashboard: React.FC = () => {
               : 'grid-cols-1'
           }`}>
             {filteredFiles.map((file) => (
-              <FileCard key={file.file_id} file={file} />
+              <FileCard key={file.file_id} file={file}  handleRemove={handleRemoveFile} />
             ))}
           </div>
         )}
