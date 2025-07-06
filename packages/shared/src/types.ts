@@ -88,3 +88,8 @@ export interface SearchFilesDTO {
 }
 
 
+export interface UpdateAccessDTO {
+  file_id: string;
+  is_public: boolean;
+  shared_with: SharedAccessEntry[];
+}

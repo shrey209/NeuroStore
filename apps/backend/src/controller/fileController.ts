@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import File from "../models/files";
-import { SharedFile, FileDataDTO, SearchFilesDTO, ChunkData } from "@neurostore/shared/types";
+import { SharedFile, FileDataDTO, SearchFilesDTO, ChunkData, UpdateAccessDTO ,AccessLevel} from "@neurostore/shared/types";
 import { Types } from "mongoose";
 import User from "../models/users";
 import Metadata from "../models/metadata";
@@ -424,5 +424,36 @@ export const updateFileName = async (req: Request, res: Response) => {
     console.error("❌ Failed to update file name:", error);
      res.status(500).json({ error: "Internal server error" });
      return;
+  }
+};
+
+export const updateFileAccess = async (req: Request, res: Response) => {
+  try {
+    const { file_id, is_public, shared_with }: UpdateAccessDTO = req.body;
+
+    if (!file_id) {
+       res.status(400).json({ message: 'file_id is required' });
+       return;
+    }
+    console.log(file_id)
+    const file = await File.findOne({ file_id });
+
+    if (!file) {
+       res.status(404).json({ message: 'File not found' });
+       return;
+    }
+
+    file.is_public = is_public;
+    file.set('shared_with', shared_with);
+
+
+    await file.save();
+
+     res.status(200).json({ message: 'Access updated successfully', file });
+     return
+  } catch (err) {
+    console.error('Error updating file access:', err);
+     res.status(500).json({ message: 'Internal server error' });
+     return
   }
 };

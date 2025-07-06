@@ -22,16 +22,17 @@ import {
   Copy,
   Save,
 } from "lucide-react";
-import { SharedFile, SharedAccessEntry } from "@neurostore/shared/types";
+import { SharedFile, SharedAccessEntry, UpdateAccessDTO } from "@neurostore/shared/types";
 import axios from "axios";
 import { BASE_URL } from "../../utils/fileUtils";
 
 interface FileCardProps {
   file: SharedFile;
   handleRemove: (fileId: string) => void;
+   handleAccessChange :(data: UpdateAccessDTO) => void;
 }
 
-const FileCard: React.FC<FileCardProps> = ({ file, handleRemove}) => {
+const FileCard: React.FC<FileCardProps> = ({ file, handleRemove , handleAccessChange}) => {
   const navigate = useNavigate();
   const [showActions, setShowActions] = useState(false);
   const [showAddTag, setShowAddTag] = useState(false);
@@ -210,7 +211,7 @@ const FileCard: React.FC<FileCardProps> = ({ file, handleRemove}) => {
       );
 
       console.log("✅ File deleted:", res.data.message);
-      handleRemove(file.file_id)
+      handleRemove(file.file_id);
       setShowActions(false);
     } catch (err) {
       console.error("❌ Error deleting file:", err);
@@ -269,18 +270,31 @@ const FileCard: React.FC<FileCardProps> = ({ file, handleRemove}) => {
   };
 
   // TODO: Implement save access changes functionality
-  const handleSaveAccessChanges = () => {
-    const accessData = {
-      file_id: file.file_id,
-      is_public: localIsPublic,
-      shared_with: localSharedWith,
-    };
-
-    console.log("Save access changes:", accessData);
-    // TODO: Add API call to save access changes to backend
-    // After successful save, update the original file data and close modal
-    setShowAccessManagement(false);
+ const handleSaveAccessChanges = async () => {
+  const accessData: UpdateAccessDTO = {
+    file_id: file.file_id,
+    is_public: localIsPublic,
+    shared_with: localSharedWith,
   };
+
+  console.log(" Save access changes:", accessData);
+
+  try {
+    const res = await axios.post(`${BASE_URL}/api/file/updateAccess`, accessData, {
+      withCredentials: true,
+    });
+
+    console.log(" Access updated successfully:", res.data.message || res.data);
+     handleAccessChange(accessData);
+    setShowAccessManagement(false);
+   
+    // TODO: Optionally refetch or update local state if file object needs to refresh
+  } catch (err) {
+    console.error(" Failed to update access:", err);
+    alert("Failed to update access settings. Please try again.");
+  }
+};
+
 
   // TODO: Implement copy link functionality
   const handleCopyLink = () => {
@@ -387,7 +401,7 @@ const FileCard: React.FC<FileCardProps> = ({ file, handleRemove}) => {
       {/* Access Management Modal */}
       {showAccessManagement && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+          className="fixed inset-0 backdrop-blur-sm bg-black/30 flex items-center justify-center z-50"
           onClick={() => setShowAccessManagement(false)}
         >
           <div

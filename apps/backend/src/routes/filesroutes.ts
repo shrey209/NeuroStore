@@ -11,6 +11,7 @@ import {
   getLatestFileDataByFileId,
   deleteFileById,
   updateFileName,
+  updateFileAccess,
 } from "../controller/fileController";
 
 import { verifyAuthMiddleware,optionalAuthMiddleware } from "../middlewares/jwtMiddleware";
@@ -27,4 +28,5 @@ filerouter.post("/search", verifyAuthMiddleware, searchFilesByName);
 filerouter.get("/:file_id/latest",verifyAuthMiddleware,getLatestFileDataByFileId)
 filerouter.delete("/delete/:fileId", deleteFileById);
 filerouter.patch("/file/:fileId", updateFileName);
+filerouter.post("/updateAccess",updateFileAccess);
 export default filerouter;

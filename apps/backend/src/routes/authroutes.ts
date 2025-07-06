@@ -1,5 +1,6 @@
 import express from "express";
 import { githubCallbackController, googleCallbackController ,logoutController,checkSessionController} from "../controller/authController";
+import { updateFileAccess } from "../controller/fileController";
 
 const routerAuth = express.Router();
 
@@ -24,6 +25,6 @@ routerAuth.get("/github/callback", githubCallbackController);
 routerAuth.get("/session", checkSessionController);
 routerAuth.get("/google/callback", googleCallbackController);
 routerAuth.post("/logout", logoutController);
-
+routerAuth.post("/update-access",updateFileAccess);
 
 export default routerAuth;
