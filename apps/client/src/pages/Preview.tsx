@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { useParams, useNavigate, data } from "react-router-dom";
+import { useParams, useNavigate, data, useLocation } from "react-router-dom";
 import { ArrowLeft, Download, Share2, Trash2, Edit3 } from "lucide-react";
 import axios from "axios";
 import { BASE_URL } from "../utils/fileUtils";
@@ -21,7 +21,7 @@ function getIframeMimeType(ext: string): string {
     json: "application/json",
   };
 
-  return map[ext.toLowerCase()] || "application/octet-stream"; // fallback
+  return map[ext.toLowerCase()] || "application/octet-stream";
 }
 
 const Preview: React.FC = () => {
@@ -29,6 +29,14 @@ const Preview: React.FC = () => {
   const navigate = useNavigate();
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const hasFetched = useRef(false);
+  const location = useLocation();
+
+  const getApiPath = () => {
+    if (location.pathname.includes("/public")) {
+      return `${BASE_URL}/api/file/public/${fileId}`;
+    }
+    return `${BASE_URL}/api/file/${fileId}/latest`;
+  };
 
   useEffect(() => {
     if (!fileId || hasFetched.current) return;
@@ -38,10 +46,9 @@ const Preview: React.FC = () => {
       const receivedChunks: Wrapper[] = [];
 
       try {
-        const response = await axios.get<FileDataDTO>(
-          `${BASE_URL}/api/file/${fileId}/latest`,
-          { withCredentials: true }
-        );
+        const response = await axios.get<FileDataDTO>(getApiPath(), {
+          withCredentials: true,
+        });
 
         const data = response.data;
         console.log("📦 File metadata:", data);
@@ -131,13 +138,16 @@ const Preview: React.FC = () => {
         <div className="bg-white border-b border-gray-200 px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <button
-                onClick={() => navigate("/dashboard")}
-                className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 transition-colors duration-200"
-              >
-                <ArrowLeft className="w-5 h-5" />
-                <span>Back to Dashboard</span>
-              </button>
+              {!location.pathname.includes("/public") && (
+                <button
+                  onClick={() => navigate("/dashboard")}
+                  className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 transition-colors duration-200"
+                >
+                  <ArrowLeft className="w-5 h-5" />
+                  <span>Back to Dashboard</span>
+                </button>
+              )}
+
               <div className="h-6 w-px bg-gray-300" />
               <div>
                 <h1 className="text-xl font-semibold text-gray-900">
@@ -147,14 +157,14 @@ const Preview: React.FC = () => {
               </div>
             </div>
             <div className="flex items-center space-x-3">
-              <button className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors duration-200">
+              {/* <button className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors duration-200">
                 <Edit3 className="w-4 h-4" />
                 <span>Edit</span>
               </button>
               <button className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors duration-200">
                 <Share2 className="w-4 h-4" />
                 <span>Share</span>
-              </button>
+              </button> */}
               {blobUrl && (
                 <button
                   onClick={() => {
@@ -170,10 +180,10 @@ const Preview: React.FC = () => {
                 </button>
               )}
 
-              <button className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-red-700 bg-white border border-red-300 rounded-md hover:bg-red-50 transition-colors duration-200">
+              {/* <button className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-red-700 bg-white border border-red-300 rounded-md hover:bg-red-50 transition-colors duration-200">
                 <Trash2 className="w-4 h-4" />
                 <span>Delete</span>
-              </button>
+              </button> */}
             </div>
           </div>
         </div>

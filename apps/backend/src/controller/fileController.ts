@@ -457,3 +457,106 @@ export const updateFileAccess = async (req: Request, res: Response) => {
      return
   }
 };
+
+
+
+//this one just checks for public access
+export const getLatestFileDataByFileIdPublic = async (req: Request, res: Response) => {
+  const { file_id } = req.params;
+
+  try {
+    // Step 1: Find the file
+    const file = await File.findOne({ file_id });
+
+    if (!file) {
+       res.status(404).json({ message: "File not found" });
+       return
+    }
+
+    // Step 2: Ensure it's public
+    if (!file.is_public) {
+       res.status(403).json({ message: "The requested file is not public" });
+       return
+    }
+
+    // Step 3: Ensure metadata exists
+    if (!file.metadata || file.metadata.length === 0) {
+      res.status(404).json({ message: "No metadata found for this file" });
+      return
+    }
+
+    // Step 4: Find latest metadata version
+    const latest = file.metadata.reduce((a, b) => (b.version > a.version ? b : a));
+
+    const metadataDoc = await Metadata.findById(latest._id);
+
+    if (!metadataDoc) {
+      res.status(404).json({ message: "Metadata document not found" });
+      return
+    }
+
+    // Step 5: Build and return DTO
+    const fileDataDTO: FileDataDTO = {
+      file_name: file.file_name,
+      file_extension: file.file_extension || "",
+      mime_type: file.mime_type || "",
+      file_size: file.file_size || 0,
+      chunks: metadataDoc.chunks as ChunkData[],
+    };
+
+     res.status(200).json(fileDataDTO);
+     return
+  } catch (err) {
+    console.error("Error in getLatestFileDataByFileIdPublic:", err);
+     res.status(500).json({ message: "Internal server error" });
+     return
+  }
+};
+
+// controllers/fileController.ts
+export const getSharedFilesForUser = async (req: Request, res: Response) => {
+  const user_id = res.locals.user_id;
+
+  try {
+    const user = await User.findById(user_id);
+
+    if (!user) {
+     res.status(404).json({ message: "User not found" });
+     return
+    }
+
+    let queryField = "";
+    let queryValue = "";
+
+    if (user.provider === "google") {
+      if (!user.gmail) {
+         res.status(400).json({ message: "Google user missing Gmail" });
+         return
+      }
+      queryField = "shared_with.gmail";
+      queryValue = user.gmail;
+    } else if (user.provider === "github") {
+      if (!user.github_id) {
+         res
+          .status(400)
+          .json({ message: "GitHub user missing GitHub ID" });
+
+          return
+      }
+      queryField = "shared_with.github_id";
+      queryValue = user.github_id;
+    } else {
+       res.status(400).json({ message: "Unsupported provider" });
+       return
+    }
+
+    const sharedFiles = await File.find({
+      [queryField]: queryValue,
+    });
+
+    res.status(200).json(sharedFiles);
+  } catch (err) {
+    console.error("Error fetching shared files:", err);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};

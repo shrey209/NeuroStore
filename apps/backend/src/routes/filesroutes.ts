@@ -12,6 +12,8 @@ import {
   deleteFileById,
   updateFileName,
   updateFileAccess,
+  getLatestFileDataByFileIdPublic,
+  getSharedFilesForUser,
 } from "../controller/fileController";
 
 import { verifyAuthMiddleware,optionalAuthMiddleware } from "../middlewares/jwtMiddleware";
@@ -28,5 +30,7 @@ filerouter.post("/search", verifyAuthMiddleware, searchFilesByName);
 filerouter.get("/:file_id/latest",verifyAuthMiddleware,getLatestFileDataByFileId)
 filerouter.delete("/delete/:fileId", deleteFileById);
 filerouter.patch("/rename/:fileId", updateFileName);
-filerouter.get("/updateAccess",updateFileAccess);
+filerouter.post("/updateAccess",updateFileAccess);
+filerouter.get("/public/:file_id", getLatestFileDataByFileIdPublic);
+filerouter.get("/List-shared-with-me", getSharedFilesForUser);
 export default filerouter;

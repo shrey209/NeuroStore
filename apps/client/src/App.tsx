@@ -14,6 +14,7 @@ const App: React.FC = () => {
       {/* Public Routes */}
       <Route path="/" element={<Home />} />
       <Route path="/stream" element={<StreamPage />} />
+      <Route path="/public/:fileId" element={<Preview />} />  
 
       {/* Protected Routes under MainLayout */}
       <Route element={<ProtectedRoute />}>
