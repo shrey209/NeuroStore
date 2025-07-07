@@ -1,13 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  FileText,
-  Image,
-  Video,
-  FileSpreadsheet,
-  Palette,
-  Database,
-  File,
   MoreVertical,
   Trash2,
   Clock,
@@ -21,24 +14,37 @@ import {
   Link,
   Copy,
   Save,
+  Pencil,
 } from "lucide-react";
-import { SharedFile, SharedAccessEntry, UpdateAccessDTO } from "@neurostore/shared/types";
+import {
+  SharedFile,
+  SharedAccessEntry,
+  UpdateAccessDTO,
+} from "@neurostore/shared/types";
+import { getFileIcon,getFileType,getTypeColor } from "./fileutils";
 import axios from "axios";
 import { BASE_URL } from "../../utils/fileUtils";
 
 interface FileCardProps {
   file: SharedFile;
   handleRemove: (fileId: string) => void;
-   handleAccessChange :(data: UpdateAccessDTO) => void;
+  handleAccessChange: (data: UpdateAccessDTO) => void;
+  handleRenameFile: (fileId: string, newName: string) => void;
 }
 
-const FileCard: React.FC<FileCardProps> = ({ file, handleRemove , handleAccessChange}) => {
+const FileCard: React.FC<FileCardProps> = ({
+  file,
+  handleRemove,
+  handleAccessChange,
+  handleRenameFile
+}) => {
   const navigate = useNavigate();
   const [showActions, setShowActions] = useState(false);
   const [showAddTag, setShowAddTag] = useState(false);
   const [showAccessManagement, setShowAccessManagement] = useState(false);
   const [newTag, setNewTag] = useState("");
-
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [newFileName, setNewFileName] = useState(file.file_name);
   // Local state for access management changes
   const [localIsPublic, setLocalIsPublic] = useState(file.is_public);
   const [localSharedWith, setLocalSharedWith] = useState<SharedAccessEntry[]>([
@@ -53,98 +59,6 @@ const FileCard: React.FC<FileCardProps> = ({ file, handleRemove , handleAccessCh
   );
   const [publicLink, setPublicLink] = useState("");
 
-  const getFileType = (extension: string): string => {
-    switch (extension.toLowerCase()) {
-      case "jpg":
-      case "jpeg":
-      case "png":
-      case "gif":
-      case "bmp":
-      case "svg":
-        return "image";
-      case "mp4":
-      case "mkv":
-      case "mov":
-      case "avi":
-      case "webm":
-        return "video";
-      case "pdf":
-        return "pdf";
-      case "ppt":
-      case "pptx":
-        return "presentation";
-      case "xls":
-      case "xlsx":
-      case "csv":
-        return "spreadsheet";
-      case "psd":
-      case "fig":
-      case "sketch":
-      case "xd":
-        return "design";
-      case "doc":
-      case "docx":
-      case "txt":
-      case "rtf":
-        return "document";
-      case "sql":
-      case "json":
-      case "xml":
-      case "yaml":
-      case "yml":
-      case "db":
-      case "mdb":
-        return "data";
-      default:
-        return "other";
-    }
-  };
-
-  const getFileIcon = (type: string) => {
-    switch (type.toLowerCase()) {
-      case "pdf":
-        return <FileText className="w-8 h-8 text-red-500" />;
-      case "image":
-        return <Image className="w-8 h-8 text-green-500" />;
-      case "video":
-        return <Video className="w-8 h-8 text-purple-500" />;
-      case "presentation":
-        return <FileText className="w-8 h-8 text-orange-500" />;
-      case "spreadsheet":
-        return <FileSpreadsheet className="w-8 h-8 text-emerald-500" />;
-      case "design":
-        return <Palette className="w-8 h-8 text-pink-500" />;
-      case "document":
-        return <FileText className="w-8 h-8 text-blue-500" />;
-      case "data":
-        return <Database className="w-8 h-8 text-indigo-500" />;
-      default:
-        return <File className="w-8 h-8 text-gray-500" />;
-    }
-  };
-
-  const getTypeColor = (type: string) => {
-    switch (type.toLowerCase()) {
-      case "pdf":
-        return "bg-red-50 text-red-700 border-red-200";
-      case "image":
-        return "bg-green-50 text-green-700 border-green-200";
-      case "video":
-        return "bg-purple-50 text-purple-700 border-purple-200";
-      case "presentation":
-        return "bg-orange-50 text-orange-700 border-orange-200";
-      case "spreadsheet":
-        return "bg-emerald-50 text-emerald-700 border-emerald-200";
-      case "design":
-        return "bg-pink-50 text-pink-700 border-pink-200";
-      case "document":
-        return "bg-blue-50 text-blue-700 border-blue-200";
-      case "data":
-        return "bg-indigo-50 text-indigo-700 border-indigo-200";
-      default:
-        return "bg-gray-50 text-gray-700 border-gray-200";
-    }
-  };
 
   const getAccessLevel = () => {
     if (file.is_public) return "Public";
@@ -181,7 +95,34 @@ const FileCard: React.FC<FileCardProps> = ({ file, handleRemove , handleAccessCh
     e.stopPropagation();
     setShowAddTag(!showAddTag);
   };
+const handleRenameSave = async () => {
+  const trimmedName = newFileName.trim();
 
+  if (trimmedName && trimmedName !== file.file_name) {
+    try {
+      const response = await axios.patch(
+        `${BASE_URL}/api/file/rename/${file.file_id}`,
+        {
+          file_name: trimmedName,
+        },
+        {
+          withCredentials: true, // 👈 include cookies for auth/session
+        }
+      );
+
+      if (response.status === 200) {
+        console.log("changed the name of the file")
+        handleRenameFile(file.file_id, trimmedName); 
+      } else {
+        console.error('Rename failed: Unexpected response', response);
+      }
+    } catch (error) {
+      console.error('Rename failed:', error);
+    }
+  }
+
+  setIsRenaming(false); // Always reset UI state
+};
   const handleAccessManagementClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     setShowAccessManagement(!showAccessManagement);
@@ -270,31 +211,37 @@ const FileCard: React.FC<FileCardProps> = ({ file, handleRemove , handleAccessCh
   };
 
   // TODO: Implement save access changes functionality
- const handleSaveAccessChanges = async () => {
-  const accessData: UpdateAccessDTO = {
-    file_id: file.file_id,
-    is_public: localIsPublic,
-    shared_with: localSharedWith,
+  const handleSaveAccessChanges = async () => {
+    const accessData: UpdateAccessDTO = {
+      file_id: file.file_id,
+      is_public: localIsPublic,
+      shared_with: localSharedWith,
+    };
+
+    console.log(" Save access changes:", accessData);
+
+    try {
+      const res = await axios.post(
+        `${BASE_URL}/api/file/updateAccess`,
+        accessData,
+        {
+          withCredentials: true,
+        }
+      );
+
+      console.log(
+        " Access updated successfully:",
+        res.data.message || res.data
+      );
+      handleAccessChange(accessData);
+      setShowAccessManagement(false);
+
+      // TODO: Optionally refetch or update local state if file object needs to refresh
+    } catch (err) {
+      console.error(" Failed to update access:", err);
+      alert("Failed to update access settings. Please try again.");
+    }
   };
-
-  console.log(" Save access changes:", accessData);
-
-  try {
-    const res = await axios.post(`${BASE_URL}/api/file/updateAccess`, accessData, {
-      withCredentials: true,
-    });
-
-    console.log(" Access updated successfully:", res.data.message || res.data);
-     handleAccessChange(accessData);
-    setShowAccessManagement(false);
-   
-    // TODO: Optionally refetch or update local state if file object needs to refresh
-  } catch (err) {
-    console.error(" Failed to update access:", err);
-    alert("Failed to update access settings. Please try again.");
-  }
-};
-
 
   // TODO: Implement copy link functionality
   const handleCopyLink = () => {
@@ -327,6 +274,11 @@ const FileCard: React.FC<FileCardProps> = ({ file, handleRemove , handleAccessCh
     if (accessEntry.github_id) return `GitHub: ${accessEntry.github_id}`;
     return "Unknown User";
   };
+
+  function handleRenameClick() {
+      setIsRenaming(true);
+      setShowActions(false);
+  }
 
   return (
     <div
@@ -368,6 +320,16 @@ const FileCard: React.FC<FileCardProps> = ({ file, handleRemove , handleAccessCh
             {showActions && (
               <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-20">
                 <button
+                  onClick={(e)=>{
+                    e.stopPropagation()
+                    handleRenameClick()}}
+                  className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors duration-200"
+                >
+                  <Pencil className="w-4 h-4 mr-3" />
+                  Rename
+                </button>
+               
+                <button
                   onClick={handleAccessManagementClick}
                   className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors duration-200"
                 >
@@ -381,6 +343,7 @@ const FileCard: React.FC<FileCardProps> = ({ file, handleRemove , handleAccessCh
                   <Clock className="w-4 h-4 mr-3" />
                   View Version History
                 </button>
+
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -391,6 +354,8 @@ const FileCard: React.FC<FileCardProps> = ({ file, handleRemove , handleAccessCh
                   <Trash2 className="w-4 h-4 mr-3" />
                   Delete
                 </button>
+               
+
                 {/* TODO: Add more action options here as needed */}
               </div>
             )}
@@ -631,9 +596,33 @@ const FileCard: React.FC<FileCardProps> = ({ file, handleRemove , handleAccessCh
       )}
 
       {/* File Name */}
-      <h3 className="text-lg font-semibold text-gray-900 mb-2 truncate group-hover:text-blue-600 transition-colors duration-200">
-        {file.file_name}
-      </h3>
+    {isRenaming ? (
+  <input
+    type="text"
+    value={newFileName}
+    onChange={(e) => setNewFileName(e.target.value)}
+    onBlur={() => handleRenameSave()}
+    onKeyDown={(e) => {
+      if (e.key === 'Enter') {
+        handleRenameSave();
+      } else if (e.key === 'Escape') {
+        setIsRenaming(false);
+        setNewFileName(file.file_name);
+      }
+    }}
+    onClick={(e) => e.stopPropagation()} 
+    autoFocus
+    className="text-lg font-semibold text-gray-900 mb-2 border-b border-blue-500 focus:outline-none focus:border-blue-600"
+  />
+) : (
+  <h3
+    className="text-lg font-semibold text-gray-900 mb-2 truncate group-hover:text-blue-600 transition-colors duration-200"
+    onClick={(e) => e.stopPropagation()} 
+  >
+    {file.file_name}
+  </h3>
+)}
+
 
       {/* File Size */}
       {file.file_size && (

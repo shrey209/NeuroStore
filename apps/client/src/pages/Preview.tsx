@@ -28,14 +28,14 @@ const Preview: React.FC = () => {
   const { fileId } = useParams();
   const navigate = useNavigate();
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
-const hasFetched = useRef(false);
+  const hasFetched = useRef(false);
 
   useEffect(() => {
-  if (!fileId || hasFetched.current) return;
-  hasFetched.current = true;
+    if (!fileId || hasFetched.current) return;
+    hasFetched.current = true;
 
     const fetchAndDownload = async () => {
-      const receivedChunks: Wrapper[] = []; 
+      const receivedChunks: Wrapper[] = [];
 
       try {
         const response = await axios.get<FileDataDTO>(
@@ -64,7 +64,7 @@ const hasFetched = useRef(false);
               data: [],
             })
           );
-          console.log("finsished sending metadata")
+          console.log("finsished sending metadata");
         };
 
         socket.onmessage = (event) => {
@@ -92,8 +92,6 @@ const hasFetched = useRef(false);
         };
 
         socket.onclose = () => {
-          
-
           const sortedChunks = receivedChunks
             .filter((chunk) => !chunk.err)
             .sort((a, b) => a.chunk_no - b.chunk_no);

@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { Search, Filter, Grid, List, Sparkles, X, Plus } from "lucide-react";
 import FileCard from "../components/Files/FileCard";
-import { SharedFile, SearchFilesDTO, UpdateAccessDTO } from "@neurostore/shared/types";
+import {
+  SharedFile,
+  SearchFilesDTO,
+  UpdateAccessDTO,
+} from "@neurostore/shared/types";
 import { BASE_URL } from "../utils/fileUtils";
 import axios from "axios";
 
@@ -15,20 +19,27 @@ const Dashboard: React.FC = () => {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [loading, setLoading] = useState(false);
 
-  
-  const updateFileAccessLocally = (updatedAccessData: UpdateAccessDTO) => {
+  const handleRenameFile = (fileId: string, newName: string) => {
   setFiles((prevFiles) =>
-    prevFiles.map((f) =>
-      f.file_id === updatedAccessData.file_id
-        ? {
-            ...f,
-            is_public: updatedAccessData.is_public,
-            shared_with: updatedAccessData.shared_with,
-          }
-        : f
+    prevFiles.map((file) =>
+      file.file_id === fileId ? { ...file, file_name: newName } : file
     )
   );
 };
+
+  const updateFileAccessLocally = (updatedAccessData: UpdateAccessDTO) => {
+    setFiles((prevFiles) =>
+      prevFiles.map((f) =>
+        f.file_id === updatedAccessData.file_id
+          ? {
+              ...f,
+              is_public: updatedAccessData.is_public,
+              shared_with: updatedAccessData.shared_with,
+            }
+          : f
+      )
+    );
+  };
   // TODO: Replace with actual API call
   useEffect(() => {
     const fetchFiles = async () => {
@@ -96,9 +107,6 @@ const Dashboard: React.FC = () => {
       prevFiles.filter((file) => file.file_id !== deletedFileId)
     );
   };
-
-  
-
 
   // Filter files based on search query and selected tags
   const filteredFiles = files.filter((file) => {
@@ -273,6 +281,7 @@ const Dashboard: React.FC = () => {
                 file={file}
                 handleRemove={handleRemoveFile}
                 handleAccessChange={updateFileAccessLocally}
+                handleRenameFile={handleRenameFile}
               />
             ))}
           </div>

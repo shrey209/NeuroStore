@@ -27,6 +27,6 @@ filerouter.get("/filename/:filename/metadata/latest", verifyAuthMiddleware,getLa
 filerouter.post("/search", verifyAuthMiddleware, searchFilesByName);
 filerouter.get("/:file_id/latest",verifyAuthMiddleware,getLatestFileDataByFileId)
 filerouter.delete("/delete/:fileId", deleteFileById);
-filerouter.patch("/file/:fileId", updateFileName);
-filerouter.post("/updateAccess",updateFileAccess);
+filerouter.patch("/rename/:fileId", updateFileName);
+filerouter.get("/updateAccess",updateFileAccess);
 export default filerouter;
