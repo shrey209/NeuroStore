@@ -1,6 +1,6 @@
 # A multi step build since go results in a binary we dont require compiler in final image
 # ---------- Build Stage ----------
-FROM golang:1.22 AS builder
+FROM golang:1.23 as builder
 
 
 WORKDIR /app 
