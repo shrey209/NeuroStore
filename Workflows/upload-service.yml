@@ -1,0 +1,28 @@
+name: Upload Service CI
+
+on:
+  push:
+    paths:
+      - 'services/upload-service/**'
+  pull_request:
+    paths:
+      - 'services/upload-service/**'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: services/upload-service
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        run: |
+          docker build -t upload-service .
