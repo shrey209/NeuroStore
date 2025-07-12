@@ -164,7 +164,7 @@ func DownloadAndStreamChunks(metaMap map[string][][]int, conn *websocket.Conn) {
 			Data:    base64.StdEncoding.EncodeToString(wrapper.Data),
 		})
 		if err != nil {
-			log.Printf("❌ Failed to send chunk %d: %v", wrapper.ChunkNo, err)
+			log.Printf(" Failed to send chunk %d: %v", wrapper.ChunkNo, err)
 			break
 		}
 	}
