@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Search, Filter, Grid, List, Sparkles, X, Plus } from "lucide-react";
+import { Search, Filter, Grid, List, Sparkles, X } from "lucide-react";
 import FileCard from "../components/Files/FileCard";
 import {
   SharedFile,

@@ -7,6 +7,7 @@ import Preview from "./pages/Preview";
 import Upload from "./pages/Upload";
 import MainLayout from "./MainLayout";
 import ProtectedRoute from "./ProtectedRoute";
+import SharedWith from "./components/Files/SharedWith";
 
 const App: React.FC = () => {
   return (
@@ -23,7 +24,7 @@ const App: React.FC = () => {
           <Route path="upload" element={<Upload />} />
           <Route path="preview/:fileId" element={<Preview />} />
           <Route path="files" element={<Dashboard />} />
-          <Route path="favorites" element={<Dashboard />} />
+          <Route path="Shared-With" element={<SharedWith />} />
           <Route path="analytics" element={<Dashboard />} />
           <Route path="storage" element={<Dashboard />} />
           <Route path="settings" element={<Dashboard />} />

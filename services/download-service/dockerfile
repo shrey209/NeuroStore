@@ -1,0 +1,25 @@
+# A multi step build since go results in a binary we dont require compiler in final image
+# ---------- Build Stage ----------
+FROM golang:1.22 AS builder
+
+
+WORKDIR /app 
+
+
+COPY go.mod go.sum ./
+RUN go mod download
+
+
+COPY . .
+
+# 
+RUN go build -o app .
+
+# ---------- Final Stage ----------
+FROM scratch
+
+
+COPY --from=builder /app/app .
+
+#run the binary
+CMD ["./app"]

@@ -44,7 +44,7 @@ const Sidebar: React.FC = () => {
     { icon: Home, label: 'Dashboard', path: '/dashboard', active: true },
     { icon: FolderOpen, label: 'My Files', path: '/files' },
     { icon: Upload, label: 'Upload', path: '/upload' },
-    { icon: Star, label: 'Favorites', path: '/favorites' },
+    { icon: Star, label: 'Shared With', path: '/Shared-With' },
   ];
 
   const settingsItems = [

@@ -6,7 +6,7 @@ import {
   Video,
   Palette,
   Database,
-} from "lucide-react"; // adjust based on your icon source
+} from "lucide-react"; 
 
 export const getFileType = (extension: string): string => {
   switch (extension.toLowerCase()) {

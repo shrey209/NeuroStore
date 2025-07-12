@@ -93,7 +93,7 @@ func StartDispatcher(q *ConcurrentChunkDeque) {
 			q.lock.Lock()
 
 			now := time.Now()
-			shouldForceFlush := q.totalChunks > 0 && now.Sub(q.lastflushtime) > 60*time.Second
+			shouldForceFlush := q.totalChunks > 0 && now.Sub(q.lastflushtime) > 20*time.Second
 
 			for q.totalChunks >= 500 || shouldForceFlush {
 				cur := 500

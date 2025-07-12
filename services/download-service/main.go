@@ -159,28 +159,28 @@ type WSMessage struct {
 func wsGetFileHandler(w http.ResponseWriter, r *http.Request) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Println("❌ WebSocket upgrade failed:", err)
+		log.Println(" WebSocket upgrade failed:", err)
 		return
 	}
 	defer conn.Close()
 
-	log.Println("🔌 WebSocket connection established")
+	log.Println(" WebSocket connection established")
 
 	var collectedChunks []ChunkData // <-- collect until we receive "end"
 
 	for {
 		_, message, err := conn.ReadMessage()
 		if err != nil {
-			log.Println("❌ WebSocket read error:", err)
+			log.Println(" WebSocket read error:", err)
 			break
 		}
 
-		log.Println("🔵 WebSocket received data:")
+		log.Println(" WebSocket received data:")
 		log.Println(string(message))
 
 		var msg WSMessage
 		if err := json.Unmarshal(message, &msg); err != nil {
-			log.Println("❌ Failed to parse WSMessage:", err)
+			log.Println(" Failed to parse WSMessage:", err)
 			conn.WriteJSON(map[string]string{
 				"error": "Invalid message format",
 			})
@@ -190,10 +190,10 @@ func wsGetFileHandler(w http.ResponseWriter, r *http.Request) {
 		switch msg.Type {
 		case "chunk":
 			collectedChunks = append(collectedChunks, msg.Data...)
-			log.Printf("🧩 Appended %d chunks (total: %d)", len(msg.Data), len(collectedChunks))
+			log.Printf(" Appended %d chunks (total: %d)", len(msg.Data), len(collectedChunks))
 
 		case "end":
-			log.Println("✅ Received 'end' signal. Processing chunks...")
+			log.Println(" Received 'end' signal. Processing chunks...")
 
 			sort.Slice(collectedChunks, func(i, j int) bool {
 				return collectedChunks[i].ChunkNo < collectedChunks[j].ChunkNo
@@ -215,11 +215,11 @@ func wsGetFileHandler(w http.ResponseWriter, r *http.Request) {
 
 			grouped := OrganizeAndSortChunks(metas)
 			DownloadAndStreamChunks(grouped, conn)
-			log.Println("📤 File streaming complete. Closing connection.")
+			log.Println(" File streaming complete. Closing connection.")
 			return // or break
 
 		default:
-			log.Println("❌ Unknown message type:", msg.Type)
+			log.Println(" Unknown message type:", msg.Type)
 			conn.WriteJSON(map[string]string{
 				"error": "Unknown message type",
 			})
